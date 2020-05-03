@@ -1,0 +1,9 @@
+*.cache
+*.Rdata
+*.RData
+*.Rproj.user
+*.Rhistory
+*.log
+.Ruserdata
+.httr-oauth
+~/.httr-oauth

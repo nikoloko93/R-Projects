@@ -1,0 +1,2 @@
+### **writeup**
+This folder contains all the data generated from **scripts** needed in the R markdown file, which produces the HTML output. Since the savvy_ids are not persistent, all data ran in **scripts** were saved as an R object (please refer to the R markdown script comments for the date of saving). This was done to ensure that the original results of this sprint, found in **Analyzing Fitbit Data** HTML file, are replicable.

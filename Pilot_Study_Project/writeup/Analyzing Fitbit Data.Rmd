@@ -1,0 +1,1336 @@
+---
+title: "__Social Peer Engagement: Asynchronous Support Group__"
+author: "Patricia Rose Donato, Nikko Joe Ramal"
+date: "November 7, 2018"
+output: 
+  html_document:
+    fig_height: 13
+    fig_width: 15
+    fig.align: 'center'
+    toc: yes
+    toc_depth: 5
+    toc_float:
+      collapsed: no
+      smooth_scroll: no
+editor_options: 
+  chunk_output_type: console
+---
+<!-- This style tag changes the formatting of div tags that are of class tabset-->
+<style>
+div.tabset {
+  font-size: 14px;
+}
+div.tabset a {
+  text.align: center;
+}
+</style>
+<!-- The following is for the toc indentation  -->
+<script>
+    $(document).ready(function() {
+      $items = $('div#TOC li');
+      $items.each(function(idx) {
+        num_ul = $(this).parentsUntil('#TOC').length;
+        $(this).css({'text-indent': num_ul * 12, 'padding-left': 0});
+      });
+
+    });
+</script>
+<style>
+    body .main-container {
+        max-width: 3000px;
+        max-height:6000px;
+    }
+</style>
+
+<style>
+body {
+text-align: justify;
+}
+</style>
+
+<style>
+  p {line-height: 1.5em;}
+</style>
+
+<style type="text/css">
+body{ /* Normal  */
+  font-size: 14px;
+  font-family:Arial, Helvetica, sans-serif;
+}
+h1.title {
+  font-size: 32px;
+  color: #303030;
+  text-align: center;
+}
+</style>
+
+<style type="text/css">
+    caption {
+      color: #303030;
+      font-size: 1.1em;
+      font-weight: bold;
+      text-align: center;
+    } 
+    table{
+      border: 0.75px solid #303030;
+      font-size: 14px;
+    }
+    p {
+      font-family: Helvetica;
+    }
+    
+</style>
+
+<style type="text/css">
+
+ {
+  margin: 10px 0px 10px 0px;
+}
+@media (max-width: 768px) {
+ {
+  position: relative;
+  width: 100%;
+}
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 350px;
+  max-height: 85%;
+}
+
+</style>
+
+
+<br>
+
+```{r setup,cache = TRUE,echo = FALSE,error = FALSE,warning = FALSE,message = FALSE}
+library(bigrquery)
+library(dplyr)
+library(likert)
+library(tidyverse)
+library(grid)
+library(gridExtra)
+library(lubridate)
+library(kableExtra)
+library(knitr)
+library(boot)
+library(DescTools)
+library(readr)
+knitr::opts_chunk$set(cache = TRUE, echo = FALSE, error = FALSE, warning = FALSE, message = FALSE)
+source("/scripts/3. preparation/functions.R")
+```
+
+
+### __Introduction__
+<p>Managing diabetes is inherently a day-to-day pursuit that frequently occurs in the context of social relationships. A handful of literature have studied the impact of a social network-based intervention on managing type 2 diabetes (T2D), and have found promising results on inpatient cost reduction and life quality improvement. In this light, the Social Peer Engagement (SPE) initiative was created with the intention to leverage social interaction between participants to increase the members’ engagement in the program while improving their physiological outcomes.</p>
+
+<p>With different social engagement strategies tested for this initiative, this sprint is focused on analyzing the impact of belonging to an asynchronous online support group on selected participants (SPE2 participants). In particular, this sprint explores its influence on their diabetes management -- as measured by their estimated glucose value (EGV) recorded from their continuous glucose monitoring (CGM) device, and on their physical activity level -- as measured by their daily logged steps from their Fitbit device. Analysis on their EGV and steps data is done in a two-fold approach: 1) SPE2 participants vs. a comparison group, and 2) SPE2 participants before and after the experiment period. To tie everything together, this sprint also analyzed survey results on SPE2 participants’ Fitbit group experience, which was done concurrently with the experiment via individual coaching call.</p>
+
+<br>
+
+### __The Experiment__
+
+<p>During the recruitment process for this asynchronous group experiment, participants were divided into three groups: Glucose All-Stars, Glucose Masters, and Glucose Champions. These members have been using the Fitbit device for some time when they were provided with a CGM device and access to a messaging forum via Fitbit’s Community feature. The CGM device is provided during the nurse visit, the earliest being on 20 Aug 2018, while the participants were placed into the groups on 23 Aug 2018. Each group, all independent of each other, has its own two coaches who prompted the discussion by posting weekly questions starting 29 Aug 2018. The participants are expected to engage in the forum via posting, leaving a comment, or giving a “cheer” to a post. This experiment went on for about eight weeks, and during which, survey questions were also asked during the participants’ one-on-one calls with their coach. </p>
+
+<p>During the participant’s individual coaching call, questions were asked to learn about the participants’ experience with the Fitbit group and how it’s influencing their diabetes management. As shown below, some questions were asked on a weekly basis, and some were asked only during their fourth and eighth week: </p>
+
+<br>
+
+```{r, echo = FALSE, results = 'asis'}
+question_tb1 <- data.frame(`WEEKLY QUESTIONS` =  c("Q20: On a scale of 1 to 5, how are you in control of your diabetes today?", 
+  "Q30: On a scale of 1 to 5, is the coach supporting your needs and goals?",
+  "Q80: On a scale of 1 to 5, how useful are the Fitbit group discussions?",
+  "Q78: How can we improve the group discussion?"))
+question_tb2 <- data.frame(`MONTHLY QUESTIONS` =  c("Q77: On a scale of 1 to 5, how has it been for you to access the Fitbit group?", 
+   "Q79: On a scale of 1 to 5, how likely are you to recommend the Fitbit group discussion to others?",
+   "Q82: On a scale of 1 to 5, how helpful were the Fitbit group discussions?", 
+   "Q83: What aspects of the group discussions did you find helpful?"))
+names(question_tb1) <- gsub("\\.", " ", names(question_tb1))
+names(question_tb2) <- gsub("\\.", " ", names(question_tb2))
+
+
+kable(question_tb1, align = "cc") %>% 
+  kable_styling(bootstrap_options  =  c("striped", "hover"), full_width  =  F) %>% 
+  column_spec(1, width = "17cm") %>%
+  row_spec(0, background = "#d7def2", font_size = 14, bold = TRUE)
+kable(question_tb2, align = "cc") %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = F) %>% 
+  column_spec(1, width = "17cm") %>%
+  row_spec(0, background = "#d7def2", font_size = 14, bold = TRUE)
+```
+
+<br>
+
+### __Limitations and Assumptions__
+
+<p>As mentioned above, the analysis for this study runs in two-fold approach, 1) SPE2 participants vs. a comparison group, and 2) SPE2 participants before and after the experiment period. </p>
+
+<p>For the first approach, the researchers established a criteria on who would be part of comparison group. That is, the possible comparison group members should have never been part of any pilot or experiment under the Glucose Management Program (GMP), and consequently, have never have been offered to be part in the SPE experiments. The selection was done thru matching the possible comparison group member to a corresponding SPE2 participant of the same gender, and closest age and risk adjustment factor (RAF) score. Since the SPE2 experiment runs for eight weeks, i.e. approximately 60 days, the data from the comparison group was also set to be in a 60 day-time frame. Their start and end dates were determined to be the first day of EGV reading until their 60th day.</p>
+
+<p>Apart from selecting the comparison group, the researchers also established the main metric to be used in analyzing the EGV data, time-in-range (TIR). TIR was derived as to the times the EGV reading is within the acceptable range, which in this study is set to 80 and 180. The EGV reading is recorded in every five-minute interval where in there is a total of 288 readings in a day. There are cases where the total daily readings are less than 288 due to not wearing the CGM device or due to inappropriate syncing of the device. In other cases, there were more than 288 readings due to repeated observations, which were removed as part of the data preparation. As a result of this irregularity, TIR made use of the participants' actual number CGM readings per day instead of the true number of daily readings, i.e. 288.</p> 
+
+<p>For the second approach, the researchers determined the "before" and "after" data of the participants in the experiment. As CGM devices were only given to the participants on the onset of the experiment and as the experiment period has just finished, there is technically no "before" and "after" data. For standardization purposes,the "before" and "after" are set to be the first two weeks and the last two weeks of a participant in the experiment. Setting this definition would still answer whether engaging in the Fitbit group indeed made an impact on their diabetes management and physical activity level. </p>
+
+<br>
+
+### __Methodology__
+<p>This study interpreted physiological improvement in two perspectives: 1) whether SPE2 participants have better EGV level or daily step activity vis-à-vis members from comparison group, and 2) whether SPE2 participants have improved egv level or daily step activity after the experiment period compared to when they were just starting out in the Fitbit group.  For both EGV and steps data, permutation test was used to address the first objective while bootstrap and Wilcoxon signed-rank test were utilized to answer the second. Using resampling methods, e.g. permutation test and bootstrap, and non-parametric test, e.g. Wilcoxon signed-rank test, allows us to make inference from the experiment's small sample.</p>
+
+<br>
+
+#### __Permutation Test__
+<p>Permutation test tests whether the observed difference between two groups happened only by chance. It attempts to construct the null distribution, i.e. the distribution this statistic would have if the treatment effect -- which in this case is belonging to the Fitbit group -- were not present, by randomly permuting individuals to SPE2 or comparison group. The two-tailed p-value is then calculated as the number of times the “null” statistic is greater than or less than the observed difference.</p>
+
+<p>For the EGV analysis, the test statistic used is the difference between the mean TIR of the SPE2 participants and the mean TIR of comparison group members. This is obtained by the calculating the TIR of each of the ith individual from the SPE2 group and the TIR of each of the jth individual from the comparison group. These TIRs are then averaged per group, and then differenced. If the difference is positive, then there are more instances where the EGV levels of the SPE2 participants are within acceptable range.</p>
+
+
+$${\frac{\sum_{i=1}^{n=20} TIR\,for\,the\,whole\,period\,_i} {20}} - {\frac{\sum_{j=1}^{m=20} TIR\,for\,the\,whole\,period\,_j}{20}}$$
+
+<p>On the other hand, for the steps data analysis, the test statistic used is the difference of the weighted average daily steps between the comparison group and the SPE2 participants, wherein the weights used is the number of days with logged steps. If this difference is positive, then the SPE2 participants have higher average daily steps.</p>
+
+$${\frac{\sum_{i=1}^{n=20} Average\,daily\,steps\,_i\,\cdot\,Number\,of\,days\,with\,data\,_i} {\sum_{i=1}^{n=20}\,\,Number\,of\,days\,with\,data\,_i }} - {\frac{\sum_{j=1}^{m=20} Average\,daily\,steps\,_j\,\cdot\,Number\,of\,days\,with\,data\,_j} {\sum_{i=1}^{n=20}\,\,Number\,of\,days\,with\,data\,_j}}$$
+
+<p>For both EGV and steps data analysis, permutation test was used to verify whether these observed differences are significantly different between the SPE2 group and the comparison group.</p>
+
+<br>
+
+#### __Bootstrap and Wilcoxon Test__
+<p>Bootstrap was primarily used for the before and after analysis of the SPE2 participants’ EGV and steps data. Bootstrap, another resampling method, attempts to construct the sampling distribution of some statistic computed from the data, and from which a confidence interval of the said statistic could be obtained. While used mainly for generating confidence intervals, it can be adapted to do hypothesis testing as with permutation test.</p>
+
+<p>For the EGV analysis, the difference in the mean TIR before and after the experiment was used as the test statistic for the bootstrap. That is, for the each of the same individual, their TIR was measured twice, one of which was obtained over the first two weeks of the experiment, i.e. “before”, and the other obtained over the last two weeks, i.e. “after.” If the difference between these two TIRs is positive, then there are more instances during the latter part of the experiment where the participant have EGV levels within the acceptable range.</p>
+
+$$ {TIR\,after\,_i - TIR\,before\,_i}$$
+
+<p>Following the same structure, the steps analysis also made use of difference between the average daily steps during the first and last two weeks of the experiment. If the difference is positive, then the average daily steps of the participants is became higher compared to when they were still new to the Fitbit group.</p>
+
+$${Average\,daily\,steps\,after\,_i - Average\,daily\,steps\,before\,_i}$$
+<p>As bootstrap is observed to have some drawbacks on small sample sizes, e.g. it rejects the null hypothesis more than it should, Wilcoxon signed-rank test was also used. Wilcoxon test is a non-parametric hypothesis test used to compare paired samples or repeated measurements on a single sample. In this case, it would be comparing TIR and average daily steps of the same individual -- again -- one of which obtained over the first two weeks of the experiment, i.e. “before”, and the other obtained during the last two weeks, i.e. “after.”</p>
+
+<br>
+
+### __Results__
+<p>Results are divided into three parts, EGV analysis, Steps analysis, and Survey analysis. Descriptive measures were shown in the EGV and Steps analysis to obtain an initial understanding of the physiological performance of SPE2 participants and comparison group as well as the “before” and “after” improvement of SPE2 participants. Descriptive measures were also shown in the survey analysis to explain the views and opinions of participants in the experiment. Results of non-parametric test and resampling methods was done to validate findings found in the descriptives.</p>
+
+<br>
+
+#### __EGV Analysis__
+<p>The EGV levels of the SPE2 participants and the comparison groups seem similar. All of the individuals' EGV levels over the set period seem to be in control which mean that most of the time their EGV readings are in range to 80 and 180. However, it can be observed in the comparison group that there are more participants (7 participants) whose EGV readings is more than 20% of the time out of range compared to SPE2 participants who only have 3 participants. Not only that, the EGV levels of the SPE2 participants also seem to be more stable, i.e. they have shorter daily bars, compared to the comparison group members.</p>
+```{r, echo = FALSE}
+round_up <- function(x, nice = c(1,2,4,5,6,8,10)) {
+  if(length(x) != 1) stop("'x' must be of length 1")
+  10^floor(log10(x)) * nice[[which(x <= 10^floor(log10(x)) * nice)[[1]]]] - 100
+}
+        
+#------------------------------ LOADING THE DATA ------------------------------#
+## Load the data
+# load(file = "comp.rda") ## just a bigquery code to pull data from bigquery; see cgm_comp_cleaning.R
+# load(file = "cgm.rda") ## see see cgm_SPE2_cleaning.R
+
+source("/scripts/2. cleaning/cgm_cleaning.R")
+cgm <- cgm_spe_clean
+comp <- cgm_comp_clean
+
+#------------------------------ CLEANING THE DATA ------------------------------#
+
+
+## Part 1 utilizes the summarise function to 1) remove the duplicate readings and 
+## 2) get the average for same datetime but diff readings
+cgm_part1 <- cgm %>%
+  group_by(savvy_id, date_local, time_local) %>%
+  summarise(egv = mean(egv))
+cgm_part2 <- cgm %>% 
+  dplyr::select(c("savvy_id", "birth_year", "gender", "raf_max", "mm_2017", "mm_2018")) %>%
+  unique()
+cgm_clean <- left_join(cgm_part1, cgm_part2, by = c("savvy_id"))
+
+
+## Comp group members have varying start and end dates of CGM use (some are still using it until now)
+## We set a definition that we'll only get 2 months worth of data from them starting from their first dates
+## as SPE2 lasted only from Aug 29 to Oct 24 (~ 2 months)
+comp_new <- comp %>%
+  group_by(savvy_id) %>%
+  filter(between(date_local, min(date_local), min(date_local) + 60))
+comp_part1 <- comp_new %>%
+  group_by(savvy_id,  date_local, time_local) %>%
+  summarise(egv = mean(egv))
+comp_part2 <- comp_new %>% 
+  dplyr::select(c("savvy_id", "birth_year", "gender", "raf_max", "mm_2017", "mm_2018")) %>%
+  unique()
+comp_clean <- left_join(comp_part1, comp_part2, by = c("savvy_id"))
+```
+
+```{r, echo=FALSE}
+#------------------------------ SPE2 GROUP ------------------------------#
+# Start date and End Date with of SPE group with weeks- must be 60 days
+spe_stend1 <- cgm_clean %>%
+   filter(savvy_id %in% c(21071, 20177)) %>% 
+  group_by(savvy_id) %>% 
+  summarise(start_date = min(date_local),  end_date = max(date_local)) %>% data.frame()
+spe_stend1$start_date <- c(as.Date("2018-08-27"),  as.Date("2018-08-20"))
+
+spe_stend2 <- cgm_clean %>%
+   filter(!savvy_id %in% c(21071, 20177)) %>% 
+  group_by(savvy_id) %>% 
+  summarise(start_date = min(date_local),  end_date = max(date_local)) %>% data.frame()
+spe_stend <- rbind(spe_stend1,  spe_stend2) 
+
+spe_stend <- spe_stend %>% 
+  mutate(new_end1 = start_date + 60) %>% 
+  mutate(new_end = ifelse(new_end1>end_date,  as.character(end_date),  as.character(new_end1))) 
+spe_stend$new_end <- as.Date(spe_stend$new_end)
+spe_stend <- spe_stend %>% 
+  mutate(s14 = start_date + 14,  e14 = new_end - 14)
+
+write.csv(spe_stend,  "spe_dates.csv")
+
+
+# -------------------------------------------------------------------------------------
+# sequence of 60 days,  first 14 days,  and last 14 days
+cgm_me <- tibble()
+cgm_me_firstandlast <- tibble()
+for (i in 1:20){
+  d <- tibble(savvy_id = spe_stend$savvy_id[i], 
+      date_local = seq.Date(spe_stend$start_date[i],  spe_stend$new_end[i],  by = 1))
+  s14 <- tibble(savvy_id = spe_stend$savvy_id[i], 
+      date_local = seq.Date(spe_stend$start_date[i],  spe_stend$s14[i],  by = 1),  id = "BEFORE")
+  e14 <- tibble(savvy_id = spe_stend$savvy_id[i], 
+      date_local = seq.Date(spe_stend$e14[i],  spe_stend$new_end[i],  by = 1),  id = "AFTER")
+  sne14 <- rbind(s14, e14)
+  sne14 <- left_join(sne14, cgm_clean,  by = c("savvy_id",  "date_local") )
+  d <- left_join(d,  cgm_clean,  by = c("savvy_id",  "date_local"))
+  cgm_me <- rbind(cgm_me,  d)
+  cgm_me_firstandlast <- rbind(cgm_me_firstandlast,  sne14)
+}
+
+
+# filter out 20686 since the data for this participant is fewer than the rest
+cgm_me_firstandlast<-cgm_me_firstandlast %>% 
+  filter(!savvy_id == 20686)
+
+cgm_clean <- cgm_me %>%
+  mutate(TIR = between(egv, 80, 180))
+
+egv_lines <- cgm_clean %>%
+  filter(!is.na(egv)) %>% 
+  group_by(savvy_id) %>%
+  summarise(avg_egv = mean(egv))
+
+tag <- cgm_clean %>%
+  mutate(tag = ifelse(egv < 80,  "below", ifelse(egv > 180,  "above", "within"))) %>%
+  group_by(savvy_id, tag) %>%
+  summarise(cnt = n())
+
+tot <- cgm_clean %>%
+  group_by(savvy_id) %>%
+  summarise(n = n())
+
+full_labels <- merge(tag, tot) %>%
+  mutate(prop = cnt/n)
+  
+within_labels <- full_labels %>%
+  filter(tag == "within") %>%
+  mutate(date_local = max(cgm_clean$date_local)-19,  
+         egv = round_up(max(as.vector(as.matrix(comp_clean$egv, cgm_clean$egv)))) - 10)
+
+above_labels <- full_labels %>%
+  filter(tag == "above") %>%
+  mutate(date_local = max(cgm_clean$date_local)-34,  
+         egv = round_up(max(as.vector(as.matrix(comp_clean$egv, cgm_clean$egv)))) - 10)
+
+below_labels <- full_labels %>%
+  filter(tag == "below") %>%
+  mutate(date_local = max(cgm_clean$date_local)-4,  
+         egv = round_up(max(as.vector(as.matrix(comp_clean$egv, cgm_clean$egv))))-10)
+
+
+
+ggplot(data = cgm_clean,  aes(x = lubridate::ymd(date_local), y = egv))  + 
+  geom_point(aes(color = ifelse(egv < 80,  "below", ifelse(egv > 180,  "above", "within"))),  
+             alpha =  0.5,  shape = 15,  size = 0.9)  + 
+  scale_x_date(date_breaks = '1 week',  date_labels = ("%b %d"))  + 
+  scale_color_manual(values = c("#F8A055", "#4897D8", "#999999"))  + 
+  guides(color = "none")  + 
+  ggtitle("Figure 1. EGV of SPE2 Participants over the Experiment Period")  + 
+  ylab("EGV")  + 
+  xlab("")  + 
+  labs(caption = "*Dots represent average EGV level per day; Line represents 
+       the average EGV level over the whole period.")  + 
+  coord_cartesian(ylim = c(0, round_up(max(as.vector(as.matrix(comp_clean$egv, cgm_clean$egv))))))  + 
+  stat_summary(fun.y = mean,  shape = 19,  color = "#3A5199",  geom ="point",  size = 0.9 )  + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, size = 12), 
+        text = element_text(family = "sans",  color = "#303030",  size = 12), 
+        title = element_text(face = "bold",  color = "#303030",  size = 15), 
+        axis.text = element_text(size = 12), 
+        axis.title = element_text(size = 14,  face = "bold"), 
+        plot.title = element_text(size = 16,  hjust = 0.5), 
+        plot.subtitle = element_text(face = "italic"), 
+        plot.caption = element_text(hjust = 0,  size = 14,  color = "#3A5199", face = "italic"), 
+        panel.background = element_rect(fill = "white",  color = "#D3D3D3"), 
+        panel.grid.major.y = element_line(colour = "#D3D3D3", linetype = "dashed"), 
+        strip.text.x = element_text(size = 12))  + 
+  facet_wrap(~ savvy_id,  nrow = 5)  + 
+  geom_hline(data = egv_lines,  aes(yintercept = avg_egv),  color = "#3A5199",  size = 0.5)  + 
+  geom_hline(yintercept = c(80, 180),  color = rep(c("#999999", "#999999"), 20),  size = rep(c(0.25, 0.25), 20))  + 
+  geom_label(data = within_labels,  aes(label = scales::percent(prop)), size = 4, color = "#999999")  + 
+  geom_label(data = above_labels,  aes(label = scales::percent(prop)), size = 4, color = "#F8A055")  + 
+  geom_label(data = below_labels,  aes(label = scales::percent(prop)), size = 4, color = "#4897D8")
+```
+
+```{r,  echo = FALSE}
+#------------------------------ COMPARISON GROUP ------------------------------#
+egv_lines <- comp_clean %>%
+  group_by(savvy_id) %>%
+  summarise(avg_egv = mean(egv))
+
+tag <- comp_clean %>%
+  mutate(tag = ifelse(egv < 80,  "below", ifelse(egv > 180,  "above", "within"))) %>%
+  group_by(savvy_id, tag) %>%
+  summarise(cnt = n())
+tot <- comp_clean %>%
+  group_by(savvy_id) %>%
+  summarise(n = n())
+full_labels <- merge(tag, tot) %>%
+  mutate(prop = cnt/n)
+
+comp_dates <- comp_clean %>%
+  group_by(savvy_id) %>%
+  summarise(date_local = max(date_local),  
+            egv = round_up(max(as.vector(as.matrix(comp_clean$egv, cgm_clean$egv)))))
+
+within_labels <- full_labels %>%
+  filter(tag == "within") %>%
+  merge(comp_dates, by="savvy_id") %>%
+  mutate(date_local = date_local-17,  egv = egv-12)
+
+above_labels <- full_labels %>%
+  filter(tag == "above") %>%
+  merge(comp_dates, by = "savvy_id") %>%
+  mutate(date_local = date_local-30,  egv = egv-12)
+
+below_labels <- full_labels %>%
+  filter(tag == "below") %>%
+  merge(comp_dates, by = "savvy_id") %>%
+  mutate(date_local = date_local-4,  egv = egv-12)
+
+
+ggplot(data = comp_clean,  aes(x = lubridate::ymd(date_local), y = egv))  + 
+  geom_point(aes(color = ifelse(egv < 80,  "below", ifelse(egv > 180,  "above", "within"))),  
+             alpha =  0.5,  shape = 15,  size = 0.9)  + 
+  scale_x_date(date_breaks = '1 week',  date_labels = ("%b %d"))  + 
+  scale_color_manual(values = c("#F8A055", "#4897D8", "#999999"))  + 
+  guides(color = "none")  + 
+  ggtitle("Figure 2. EGV of Comparison Group over a 2-Month Period")  + 
+  xlab("")  + 
+  ylab("EGV")  + 
+  labs(caption = "*Dots represent average EGV level per day; 
+       Line represents the average EGV level over the whole period.")  + 
+  stat_summary(fun.y = mean,  shape = 19,  color = "#3A5199",  geom ="point",  size = 0.9)  + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, size = 12), 
+        text = element_text(family = "sans",  color = "#303030",  size = 12), 
+        title = element_text(face = "bold",  color = "#303030",  size = 15), 
+        axis.text = element_text(size = 12), 
+        axis.title = element_text(size = 14,  face = "bold"), 
+        plot.title = element_text(size = 16,  hjust  =  0.5), 
+        plot.subtitle = element_text(face = "italic"), 
+        plot.caption = element_text(hjust = 0,  size = 14,  color  = "#3A5199", face = "italic"), 
+        panel.background = element_rect(fill = "white",  color  = "#D3D3D3"), 
+        panel.grid.major.y = element_line(colour = "#D3D3D3", linetype = "dashed"), 
+        strip.text.x = element_text(size = 12))  + 
+  coord_cartesian(ylim = c(0, round_up(max(as.vector(as.matrix(comp_clean$egv, cgm_clean$egv))))))  + 
+  facet_wrap(~ savvy_id,  nrow = 5, scales = "free_x")  + 
+  geom_hline(data = egv_lines,  aes(yintercept = avg_egv),  color = "#3A5199",  size = 0.5)  + 
+  geom_hline(yintercept = c(80, 180),  color = rep(c("#999999", "#999999"), 20),  size = rep(c(0.25, 0.25), 20))  + 
+  geom_label(data = within_labels,  aes(label = scales::percent(prop)), size = 4, color  = "#999999")  + 
+  geom_label(data = above_labels,  aes(label = scales::percent(prop)), size = 4, color  = "#F8A055")  + 
+  geom_label(data = below_labels,  aes(label = scales::percent(prop)), size = 4,color  = "#4897D8")
+```
+
+<p>Having considered the descriptives of EGV data for both groups, it also reasonable to validate the findings using permutation test to show if there is really a difference between the two groups. Based on the permutation test on their EGV means, it was found that the EGV levels of the participants belonging to the SPE group is better than that of the comparisons’. However, basing on the permutation test of the proportion of TIR,  the two groups are equally the same. That is, they both seem to be in control with their EGV levels. </p>
+
+```{r, echo = FALSE, results = 'asis'}
+# pulling egv data
+options("httr_oauth_cache"="~/.httr-oauth",httr_oob_default = TRUE)
+
+CompandSPEgroups <- read_csv("CompandSPEgroups.csv")
+
+# creating query to pull up data
+Q_EGV <- paste0("SELECT A.savvy_id, A.egv_date_time_local, A.egv 
+                FROM GMP.fact_egv as A WHERE savvy_id IN (",
+                paste0(unique(CompandSPEgroups$savvy_id), collapse = ","), ") ")
+
+EGV <- query_exec(Q_EGV, project = "research-00", use_legacy_sql = FALSE, max_pages = Inf)
+
+EGV <- data.frame(EGV %>% group_by(savvy_id,  egv_date_time_local) %>%
+  summarise(EGV = mean(egv)))
+
+egv_raw <- left_join(EGV,  CompandSPEgroups,  by = "savvy_id")
+
+
+egv_raw1 <- egv_raw %>% 
+  mutate(date_local = date(egv_date_time_local),  week_local = week(egv_date_time_local)) %>%
+  select(-X1) %>% 
+  filter(date_local  >=  as.Date("2018-08-20")) %>% 
+  filter(Group == "SPE")
+
+comp_dates <- read_csv("comp_dates.csv")
+
+egv_raw2 <- egv_raw %>% 
+  mutate(date_local = date(egv_date_time_local),  
+          week_local = week(egv_date_time_local)) %>% 
+  select(-X1) %>% 
+  filter(date_local >= as.Date(min(comp_dates$start_date)) & 
+           date_local <= as.Date(max(comp_dates$new_end))) %>% 
+  filter(Group == "Comparison")
+
+egv_raw3 <- rbind(egv_raw1, egv_raw2)
+
+data2 <- egv_raw3 %>% 
+  group_by(savvy_id,  Group) %>% 
+  summarise(egv_mean = mean(EGV),  wei = n())
+
+
+# running the function permu.test.weigts()
+
+permu_egv <-permu.test.weights(data = "data2",  voi = "egv_mean", 
+                   group.me = "Group",  weight.me = "wei",  iter=1000)
+
+
+permu.egv.tib <- tibble(`OBSERVED DIFFERENCE` = permu_egv$mean, `P-VALUE` = permu_egv$pvalue)
+
+
+
+kable(permu.egv.tib,  caption = "Table 1. Permutation Test on the Difference of 
+      Mean EGV between SPE2 and Comparison Groups",  align = "cc") %>% 
+  kable_styling(bootstrap_options = c("striped",  "hover"),  full_width = F) %>% 
+  column_spec(1,  width = "6.5cm") %>%
+  column_spec(2,  width = "6.5cm") %>% 
+  row_spec(0,  background = "#d7def2")
+
+
+# Permutation test on TIR
+data2a <- egv_raw3 %>% 
+  mutate(TIR = between(EGV,  80,  180))
+
+data2b <- data2a %>% 
+  group_by(savvy_id,  Group) %>% 
+  summarise(TIR = mean(TIR,  na.rm = TRUE))
+
+permu <- permu.test(data = data2b,  data2b$TIR,  group.me = data2b$Group)
+permu.tir.tib <- tibble(`OBSERVED DIFFERENCE` = permu$mean[[1]], `P-VALUE` = permu$pvalue)
+
+
+kable(permu.tir.tib,  caption = "Table 2. Permutation Test on the Difference of Mean TIR between SPE2 and Comparison Groups",  align = "cc") %>% 
+  kable_styling(bootstrap_options = c("striped",  "hover"),  full_width = F) %>% 
+  column_spec(1,  width = "6.5cm") %>%
+  column_spec(2,  width = "6.5cm") %>% 
+  row_spec(0,  background = "#d7def2")
+```
+
+<p>In addition to the previous analysis, Figure 3 shows that SPE2 participants seem to have improved in their last two weeks of staying in the program. To show the overview of the improvement of the participants in terms of how frequent they are in-control with their EGV levels, the researchers set the categories “Always in-control”, “Often in-control”, and “Sometimes in-control”. It is observed in the below graph that there are more people (45% out of 20 participants) who are “Always in-control” after being in the program compared to their initial first two weeks (40% out of 20 participants). The number of participants who are “Often in-control” also increases, i.e.  from 25%-35% out of 20 participants. </p>
+
+```{r, fig.width = 13, fig.height = 6}
+#------------------------------ SPE2 CGM BEFORE AND AFTER ------------------------------#
+## Extracting first 2 weeks of SPE2
+
+
+# first 14 days
+Before <- cgm_me_firstandlast %>% 
+  filter(id == "BEFORE") %>% 
+  mutate(TIR = between(egv, 80, 180))
+
+Before_prop <- Before %>%
+  group_by(savvy_id) %>%
+  summarise(TIR = mean(TIR, na.rm = TRUE)) %>%
+  mutate(egv_level = case_when(TIR < .75 ~ "Sometimes in-control", 
+                               TIR >= .75 & TIR < .90 ~ "Often in-control", 
+                               TIR >= .90 ~ "Always in-control")) %>% 
+  cbind(id = "BEFORE")
+
+
+# last 14 days
+After <- cgm_me_firstandlast %>% 
+  filter(id == "AFTER") %>% 
+  mutate(TIR = between(egv, 80, 180))
+
+After_prop <- After %>%
+  group_by(savvy_id) %>%
+  summarise(TIR = mean(TIR, na.rm = TRUE)) %>%
+  mutate(egv_level = case_when(TIR < .75 ~ "Sometimes in-control", 
+                               TIR >= .75 & TIR < .90 ~ "Often in-control", 
+                               TIR >= .90 ~ "Always in-control")) %>% 
+  cbind(id = "AFTER")
+
+
+## Combining the data
+propall <- rbind(Before_prop, After_prop) %>%
+  group_by(id, egv_level) %>%
+  summarise(prop = n()/20)
+propall$egv_level <- factor(propall$egv_level, 
+                            level = c("Sometimes in-control", "Often in-control", "Always in-control"), order = TRUE)
+propall$id <- factor(propall$id, level = c("BEFORE", "AFTER"), order = TRUE)
+
+
+# creating the plot
+ggplot(data = propall,  aes(x = id,  y = prop,  group = egv_level))  +  
+  geom_line(aes(color = egv_level),  size = 1)  + 
+  scale_color_manual(values = c("#4897D8", "#999999", "#F8A055"),  name = "IN CONTROL OF DIABETES?")  + 
+  geom_point(aes(color = egv_level))  + 
+  ggtitle("Figure 3. How in control are the SPE2 Participants of 
+          their Diabetes \n Before and After the Experiment Period?")  + 
+  ylab("PROPORTION OF PARTICIPANTS")  + 
+  xlab("")  + 
+  labs(caption = "*A participant is categorized as always in-control if their 
+       TIR is more than 90%, often in-control if TIR is within the range of 81%-90% \n and as 
+       sometimes in-control if TIR is less than or equal to 80%.") + 
+  scale_y_continuous(labels = scales::percent,  limits = c(0, 1),  breaks = seq(0, 1, by = 0.20))  + 
+  geom_label(aes(x = id, y = prop, label = scales::percent(prop), color = egv_level),  
+             position = position_nudge(y = 0.025),  show.legend = FALSE)  + 
+  theme(axis.text.x = element_text(size = 12), 
+        text = element_text(family = "sans",  color = "#303030",  size = 12), 
+        title = element_text(face = "bold",  color = "#303030",  size = 15), 
+        axis.text = element_text(size = 12), 
+        axis.title = element_text(size = 14,  face = "bold"), 
+        plot.title = element_text(size = 15,  hjust = 0.5), 
+        legend.title = element_text(size = 14), 
+        legend.text = element_text(size = 12), 
+        plot.subtitle = element_text(face = "italic"), 
+        plot.caption = element_text(hjust = 0,  size = 12,  color  = "#3A5199", face = "italic"), 
+        panel.background = element_rect(fill = "white",  color  = "#D3D3D3"), 
+        panel.grid.major.y = element_line(colour = "#D3D3D3", linetype = "dashed"), 
+        strip.text.x = element_text(size = 12))
+```
+
+<p>To validate the above findings, the researchers ran bootstrap and Wilcoxon signed-rank test. Based on the tests, there is no significant difference from “before” and “after” TIR of the SPE2 participants.</p>
+
+```{r,  echo = FALSE,  results = 'asis'}
+
+## Extracting first 2 weeks of SPE2
+Before <- cgm_me_firstandlast %>% 
+  filter(id == "BEFORE") %>% 
+  mutate(TIR = between(egv, 80, 180))
+
+
+Before_prop <- Before %>%
+  group_by(savvy_id) %>%
+  summarise(TIR = mean(TIR, na.rm = TRUE))
+
+## Extracting last 7 and 8
+After <- cgm_me_firstandlast %>% 
+  filter(id == "AFTER") %>% 
+  mutate(TIR = between(egv, 80, 180))
+
+
+After_prop <- After %>%
+  group_by(savvy_id) %>%
+  summarise(TIR = mean(TIR, na.rm = TRUE))
+
+## Combining the data
+boot_data <- merge(Before_prop, After_prop, by = "savvy_id") 
+colnames(boot_data) <- c("savvy_id", "pre_mean", "post_mean")
+
+
+diff <- boot(boot_data,  statistic = diff_fn, R = 1000)
+boot_egv <- boot.ci(diff,  type = "norm")
+
+
+wlcx1 <- wilcox.test(boot_data$pre_mean,  boot_data$post_mean,  paired = TRUE)
+wilcx.tb1 <- tibble(`TEST STATISTIC` = wlcx1$statistic,  `P-VALUE` = wlcx1$p.value)
+
+
+boot_egv.tib <- tibble(`OBSERVED DIFFERENCE` = boot_egv$t0,  `95% CI` = paste("(", round(boot_egv$normal[2], 2),  ",",  round(boot_egv$normal[3], 2), ")"))
+
+
+
+kable(boot_egv.tib,  caption = "Table 3. Bootstrap on the Difference in 
+      Proportion of TIR for SPE Group Before and After the Experiment",  align = "cc") %>% 
+  kable_styling(bootstrap_options = c("striped",  "hover"),  full_width = F) %>% 
+  column_spec(1,  width = "6.5cm") %>%
+  column_spec(2,  width = "6.5cm") %>% 
+  row_spec(0,  background = "#d7def2")
+
+kable(wilcx.tb1,  caption = "Table 4. Wilcoxon Test on the Difference in Proportions of TIR for SPE Group Before and After the Experiment",  align = "cc") %>% 
+  kable_styling(bootstrap_options = c("striped",  "hover"),  full_width = F) %>% 
+  column_spec(1,  width = "6.5cm") %>%
+  column_spec(2,  width = "6.5cm") %>% 
+  row_spec(0,  background = "#d7def2")
+
+```
+
+
+<br>
+
+#### __Steps Analysis__
+
+<p>Looking into individuals’ daily steps (Figure 4 and Figure 5), there is an observed pattern for participants belonging in the SPE2 group. Their steps during the first two weeks are higher compared to the other weeks. For some participants, e.g. 23814, 30907, their daily walking steps suddenly decrease after two weeks in experiment and the proceeding weeks is consistently lower compared to the first two weeks. The other participants show gradual decrease of steps in their first two weeks, e.g. 22847, 10632. It can also be observed that most participants are considered inactive, i.e. mean daily steps is less than 5000.</p>
+
+<p>There is no participant from the SPE2 experiment who has been consistent in their daily steps unlike in the comparison group. In the comparison group, most participants have somehow stable daily steps however the mean daily steps is quite low, e.g. 49967, 25780. In addition, comparison groups also show the same steps activity with SPE2 participants’.</p> 
+
+<br>
+
+```{r,  echo = FALSE}
+# ------------------------------LOADINF STEPS DATA---------------------------
+
+source("/scripts/2. cleaning/steps_cleaning.R")
+
+#------------------------------ SPE2 GROUP ------------------------------#
+# Working with steps data
+# starts date for the spe group is 8/20
+# plots for spe2 group
+
+step1 <- step_raw %>% 
+  select(-X1) %>% 
+  filter(Group == "SPE")
+
+# 60th day is the end_date of each participant for step
+# if the 60th day exceed 2018-10-25, max available data, then, end_date is 2018-10-25 else the 60th day
+spe_stend3 <- spe_stend %>% 
+  select(savvy_id,start_date, end_date, new_end1) %>% 
+  mutate(new_end = ifelse(new_end1>as.Date("2018-10-25"), "2018-10-25", as.character(new_end1 )))
+spe_stend3$new_end <- as.Date(spe_stend3$new_end)
+spe_stend3 <- spe_stend3 %>% 
+  mutate(s14 = start_date + 14,  e14 = new_end-14)
+
+
+# sequence of 60 days,  first 14 days,  and last 14 days
+stp_me <- tibble()
+stp_me_firstandlast <- tibble()
+for (i in 1:20){
+  d <- tibble(savvy_id = spe_stend$savvy_id[i], 
+      step_date = seq.Date(spe_stend3$start_date[i],  spe_stend3$new_end[i],  by = 1))
+  s14 <- tibble(savvy_id = spe_stend3$savvy_id[i], 
+      step_date = seq.Date(spe_stend3$start_date[i],  spe_stend3$s14[i],  by = 1),  id = "BEFORE")
+  e14 <- tibble(savvy_id = spe_stend3$savvy_id[i], 
+      step_date = seq.Date(spe_stend3$e14[i],  spe_stend3$new_end[i],  by = 1),  id = "AFTER")
+  sne14 <- rbind(s14, e14)
+  sne14 <- left_join(sne14, step1,  by = c("savvy_id",  "step_date") )
+  d <- left_join(d,  step1,  by = c("savvy_id",  "step_date"))
+  stp_me <- rbind(stp_me,  d)
+  stp_me_firstandlast <- rbind(stp_me_firstandlast,  sne14)
+}
+
+
+# filter out 20686 since the data for this participant is small
+stp_me_firstandlast<-stp_me_firstandlast %>% 
+  filter(!savvy_id == 20686)
+
+
+step1b <- stp_me %>% 
+  filter(!is.na(steps)) %>% 
+  group_by(savvy_id) %>% 
+  summarise(max_date = max(step_date),  mean_step = scales::comma(round(mean(steps),  0)))
+
+
+ggplot(data = stp_me,  aes(x = step_date,  y = steps)) + 
+  geom_line(color = "#303030") + 
+  scale_x_date(date_breaks = "1 week",  date_labels = ("%b %d"))  + 
+  ggtitle("Figure 4. Steps of SPE2 Participants over the Experiment Period") + 
+  facet_wrap(~savvy_id,  nrow = 5) + 
+  labs(caption = "*Average steps over the whole period.")  + 
+  xlab("")  + 
+  ylab("TOTAL STEPS") + 
+  geom_label(data = step1b,  aes(x = as.Date("2018-10-25")-4,  y = 40000-1500),  
+            label = step1b$mean_step,  size = 4, color  = "#3A5199") + 
+  coord_cartesian(ylim = c(0, 40000))  + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, size = 12), 
+        text = element_text(family = "sans",  color = "#303030",  size = 12), 
+        title = element_text(face = "bold",  color = "#303030",  size = 15), 
+        axis.text = element_text(size = 12), 
+        axis.title = element_text(size = 14,  face = "bold"), 
+        plot.title = element_text(size = 16,  hjust  =  0.5), 
+        plot.subtitle = element_text(face = "italic"), 
+        plot.caption = element_text(hjust = 0,  size = 14,  color  = "#3A5199", face = "italic"), 
+        panel.background = element_rect(fill = "white",  color  = "#D3D3D3"), 
+        panel.grid.major.y = element_line(colour = "#D3D3D3", linetype = "dashed"), 
+        strip.text.x = element_text(size = 12))
+```
+
+```{r,  echo = FALSE}
+#------------------------------ COMPARISON GROUP ------------------------------#
+
+# Working with steps data
+# starts date for the spe group is 8/20
+# plots for nonspe2 group
+step2 <- tibble()
+comp_dates <- read_csv("comp_dates.csv")
+comp_dates <- as.data.frame(comp_dates)
+for (i in 1:20){
+  c <- step_raw %>% 
+    filter(savvy_id == comp_dates$savvy_id[i]) %>% 
+    filter(step_date >= as.Date(comp_dates$start_date[i])&
+             step_date <= as.Date(comp_dates$new_end[i]))
+  step2 <- rbind(step2,  c)
+}
+
+step2b <- step2 %>% 
+  group_by(savvy_id) %>% 
+  summarise(mean_step = scales::comma(round(mean(steps),  0)))
+
+step2a <- tibble()
+for (i in 1:20){
+  d <- tibble(savvy_id = comp_dates$savvy_id[i], 
+      step_date = seq.Date(comp_dates$start_date[i],  comp_dates$new_end[i],  by = 1))
+  d <- left_join(d,  step2,  by = c("savvy_id",  "step_date"))
+  step2a <- rbind(step2a,  d)
+}
+
+step2b1 <- step2a %>% 
+  group_by(savvy_id) %>% 
+  summarise(qt = as.Date(quantile(unclass(step_date),  0.90),  origin = "1970-01-01")) %>% 
+  left_join(step2b)
+
+
+ggplot(data = step2a,  aes(x = step_date,  y = steps)) + 
+  geom_line(color = "#303030") + 
+  scale_x_date(date_breaks = "1 week",  date_labels = ("%b %d"))  + 
+  ggtitle("Figure 5. Steps of Comparison Group over a 2-Month Period") + 
+  facet_wrap(~savvy_id,  nrow = 5,  scales = "free_x") + 
+  coord_cartesian(ylim = c(0, 40000))  + 
+  labs(caption = "*Average steps over the whole period.")  + 
+  xlab("")  + 
+  ylab("TOTAL STEPS") + 
+  geom_label(data = step2b1,  aes(x = qt,  y = 40000-1200),  
+            label = step2b$mean_step,  size = 4, color  = "#3A5199") + 
+  theme(axis.text.x  =  element_text(angle = 90, vjust = 0.5, size = 12), 
+        text = element_text(family = "sans",  color = "#303030",  size = 12), 
+        title = element_text(face = "bold",  color = "#303030",  size = 15), 
+        axis.text = element_text(size = 12), 
+        axis.title = element_text(size = 14,  face = "bold"), 
+        plot.title = element_text(size = 16,  hjust  =  0.5), 
+        plot.subtitle = element_text(face = "italic"), 
+        plot.caption = element_text(hjust = 0,  size = 14,  color  = "#3A5199", face = "italic"), 
+        panel.background = element_rect(fill = "white",  color  = "#D3D3D3"), 
+        panel.grid.major.y = element_line(colour = "#D3D3D3", linetype = "dashed"), 
+        strip.text.x = element_text(size = 12))
+```
+
+<p>It appears to be that the above findings is correct. Based on the permutation test, it suggests that the weighted observed mean difference of the two groups are not significantly different from each other. </p>
+
+```{r, echo = FALSE, results = 'asis'}
+# pulling up the steps data
+
+data1 <- rbind(stp_me[, c(1, 3, 2, 4, 8)],  step2[, c(1:4, 9)])
+
+data1a <- data1 %>% 
+  filter(!is.na(steps)) %>% 
+  group_by(savvy_id,  Group) %>% 
+  summarise(steps = mean(steps),  cnt = n())
+
+# running the function permu.test.weigts()
+permu_step <- permu.test.weights(data = "data1a",  voi = "steps", 
+                   group.me = "Group",  weight.me = "cnt",  iter = 1000)
+
+permu.step.tib <- tibble(`OBSERVED DIFFERENCE` = permu_step$mean, `P-VALUE` = permu_step$pvalue)
+
+
+kable(permu.step.tib,  caption = "Table 5. Permutation Test on the Difference of Average Daily Steps Between SPE2 and Comparison Groups",  align = "cc") %>% 
+  kable_styling(bootstrap_options = c("striped",  "hover"),  full_width = F) %>% 
+  column_spec(1,  width = "6.5cm") %>%
+  column_spec(2,  width = "6.5cm") %>% 
+  row_spec(0,  background = "#d7def2")
+```
+
+<p>Figure 6 suggests that the above finding is true for the SPE2 participants. The percentage of participants who were active in the first two weeks declined in the last two weeks (from 25% - 10% out of 20 participants). As the percentage of active participants decreases,  the percentage of the inactive participants increases. It increases twice the percentage of inactive participants from the first two weeks (from 30% - 60% out of 20 participants).</p>
+
+```{r, fig.width = 13, fig.height = 6}
+#------------------------------ SPE2 BEFORE AND AFTER ------------------------------#
+## Firts 14 days
+
+Before <- stp_me_firstandlast %>%
+  filter(id == "BEFORE")%>%
+  group_by(savvy_id) %>%
+  summarise(avg_steps = mean(steps, na.rm = TRUE)) %>% 
+  cbind(id = "BEFORE") %>% data.frame()
+
+#Last 14 days
+After <- stp_me_firstandlast %>%
+  filter(id == "AFTER")%>%
+  group_by(savvy_id) %>%
+  summarise(avg_steps = mean(steps, na.rm = TRUE)) %>% 
+  cbind(id = "AFTER") %>% data.frame()
+
+## Combining the data
+allstepBnA <- rbind(Before, After) %>%
+  mutate(Activeness = case_when(avg_steps <= 5000 ~ "Inactive", 
+                                avg_steps > 5000 & avg_steps <= 9999 ~ "Somewhat Active", 
+                                avg_steps >= 10000 ~ "Active"))
+
+prop <- allstepBnA %>% 
+  group_by(id,  Activeness) %>% 
+  summarise(cnt = n()) %>% 
+  mutate(prop = cnt/20)
+
+prop$Activeness <- factor(prop$Activeness, level = c("Inactive", "Somewhat Active", "Active"), order = TRUE)
+prop$id <- factor(prop$id, level = c("BEFORE", "AFTER"), order = TRUE)
+
+ggplot(data = prop,  aes(x = id,  y = prop,  group = Activeness)) +  
+  geom_line(aes(color = Activeness),  size = 1)  + 
+  geom_point(aes(color = Activeness))  + 
+  scale_color_manual(values = c("#4897D8", "#999999", "#F8A055"),  name = "ACTIVENESS LEVEL")  + 
+  ggtitle("Figure 6. Activeness Category of SPE2 Participants \n Before and After the Experiment")  + 
+  ylab("PROPORTION OF INDIVIDUALS")  + 
+  xlab("")  + 
+  labs(caption = "*Individuals who take fewer than 5,000 steps are considered to be sedentary or inactive.  Somewhat active people usually take \n 5000 to 9,999 steps per day. People considered to be active take 10,000 or more steps per day.")  + 
+  scale_y_continuous(labels = scales::percent,  limits = c(0, 1),  breaks = seq(0, 1, by = 0.20))  + 
+  geom_label(aes(x = id, y = prop, label = scales::percent(prop), color = Activeness),  
+             position = position_nudge(y = 0.025),  show.legend = FALSE)  + 
+  theme(axis.text.x = element_text(size = 12), 
+        text = element_text(family = "sans",  color = "#303030",  size = 12), 
+        title = element_text(face = "bold",  color = "#303030",  size = 15), 
+        axis.text = element_text(size = 12), 
+        axis.title = element_text(size = 14,  face = "bold"), 
+        plot.title = element_text(size = 15,  hjust = 0.5), 
+        legend.title = element_text(size = 14), 
+        legend.text = element_text(size = 12), 
+        plot.subtitle = element_text(face = "italic"), 
+        plot.caption = element_text(hjust = 0,  size = 12,  color  = "#3A5199", face = "italic"), 
+       panel.background = element_rect(fill = "white",  color  = "#D3D3D3"), 
+        panel.grid.major.y = element_line(colour = "#D3D3D3", linetype  =  "dashed"), 
+        strip.text.x = element_text(size = 12))
+```
+
+<p>In connection to the before and after graph, the bootstrap and Wilcoxon test also suggest that there is indeed a change in their physical activity level after being in the experiment. In particular, the average daily steps of the participants significantly decreased in the last two weeks of the experiment. </p>
+
+```{r, echo = FALSE, results = 'asis'}
+#------------------------------ STEPS ------------------------------#
+
+Before <- stp_me_firstandlast %>%
+  filter(id == "BEFORE")%>%
+  group_by(savvy_id) %>%
+  summarise(avg_steps = mean(steps, na.rm = TRUE),  weights = n()) 
+
+
+After <- stp_me_firstandlast %>%
+  filter(id == "AFTER")%>%
+  group_by(savvy_id) %>%
+  summarise(avg_steps = mean(steps, na.rm = TRUE),  weights = n())
+
+
+## Combining the data
+boot_data <- merge(Before, After, by = "savvy_id")
+colnames(boot_data) <- c("savvy_id", "pre_mean", "pre_weight", "post_mean", "post_weight")
+
+
+wlcx2 <- wilcox.test(boot_data$pre_mean,  boot_data$post_mean,  paired = TRUE)
+wilcx.tb2 <- tibble(`TEST STATISTIC` = wlcx2$statistic,  `P-VALUE` = wlcx2$p.value)
+
+## Bootstrapping
+diff <- boot(boot_data,  statistic = diff_wt, R = 1000)
+boot_step <-boot.ci(diff,  type = "norm")
+
+boot_step.tib <- tibble(`OBSERVED DIFFERENCE` = boot_step$t0,  `95% CI` = paste("(", round(boot_step$normal[2], 2),  ",",  round(boot_step$normal[3], 2), ")"))
+
+
+
+
+kable(boot_step.tib,  caption = "Table 6. Bootstrap on the Difference of Average Daily Steps for SPE Group Before and After the Experiment",  align = "cc") %>% 
+  kable_styling(bootstrap_options = c("striped",  "hover"),  full_width = F) %>% 
+  column_spec(1,  width = "6.5cm") %>%
+  column_spec(2,  width = "6.5cm") %>% 
+  row_spec(0,  background = "#d7def2")
+kable(wilcx.tb2,  caption = "Table 7. Wilcoxon Test on the Difference of Average Daily Steps for SPE Group Before and After the Experiment",  align = "cc") %>% 
+  kable_styling(bootstrap_options = c("striped",  "hover"),  full_width = F) %>% 
+  column_spec(1,  width = "6.5cm") %>%
+  column_spec(2,  width = "6.5cm") %>% 
+  row_spec(0,  background = "#d7def2")
+```
+
+<br> 
+
+#### __Survey Analysis__
+<p>The level of engagement in the Fitbit group varied across the three groups, Gluose Masters, Champions, and All-Stars, but it was in general very low, with only one member each group actively participating via posting, leaving a comment, or giving a "cheer." Participants were also not able to consistently give feedback throughout the survey period. Based on the individual coaching calls, particularly when asked of Q78 and Q83, a few of them have not yet even accessed the Fitbit group -- either due to lack of motivation or need of technical assistance -- even when the experiment is already six weeks in. While the dominant feedback for these open-ended questions were "no comment," it is believed that need of technical assistance and lack of motivation are what hinder participants to actively engage in the Fitbit group. Some also expressed that they find it hard to relate to the stories of co-participants, suggesting that participants should instead be grouped by age or that there should be more activities. In general, there seems to be no problem, however, with their coaches.</p>
+
+<p>While there is an evident lack of engagement from the participants, they also have positive feedback towards the group discussion. Some have expressed that while they don't actually engage in the discussion, knowing that they have shared experiences and similar goals with other people makes them feel they are not alone and helps them get going with their goals too. An instance in one group even showed that the group has convinced one participant to avoid brining sweets to work. As shown also by the weekly question Q20, participants seem to feel more in control of their diabetes as they stay longer in the program. Participants also become more sure of their perception towards the usefulness of the Fitbit group discussions, i.e. Q80, as the weeks go by, as shown by the gradual increase of individuals having positive sentiment. Overall, while there is low participation among the members, a lot have also expressed positive feedback from having shared experiences and and mutual responsibilities with their co-participants.</p>
+
+```{r, echo = FALSE}
+#------------------------------ LOADING THE DATA ------------------------------#
+source("/scripts/2. cleaning/survey_cleaning.R")
+
+## Removing duplicates
+survey_spe2 <- survey_spe2 %>%
+  filter(!(savvy_id == 21071 & answer == "No comment at this time." & coaching_date == as.Date("2018-10-11")))
+survey_spe2 <- survey_spe2[!duplicated(survey_spe2), ]
+
+## Setting the labels for the questions
+labels <- data.frame(question_nbr = c(20, 30, 77, 79:83), 
+                     label = c("Q20: How are you in control of your diabetes today?", 
+                               "Q30: Is the coach supporting your needs and goals?", 
+                               "Q77: How is has it been for you to access the Fitbit groups?", 
+                               "Q79: How likely are you to recommend the Fitbit group discussion to others?", 
+                               "Q80: How useful are the Fitbit group discussions?", 
+                               "Q81: How helpful were the Fitbit group discussions?", 
+                               "Q82: How satisfied are you with the Fitbit group discussions?", 
+                               "Q83: What aspects of group dicussions were helpful?"), 
+                     type = c("weekly", "weekly", "monthly", "monthly", "weekly", "monthly", "monthly", "monthly"))
+```
+
+```{r, fig.width = 13, fig.height = 7}
+#------------------------------ WEEKLY QUESTIONS ------------------------------#
+## Q20,  Q30,  Q78,  and Q80 are asked in the 4th and 6th week based on the data.
+## Q30 is not in the original coaching call guide; Q78 is an open-ended question so it is omitted here.
+## 1 savvy_id has these questions asked on their 3rd week and not on their 4th week;
+## so we just lumped Week 3 and Week 4 into Mid of the Period,  and Week 6 as End of the Period.
+
+weekly_questions <- left_join(survey_spe2, labels, by = c("question_nbr")) %>%
+  filter(type == "weekly")
+
+survey_summary <- weekly_questions %>%
+  arrange(savvy_id,  week_no) %>%
+  filter(question_nbr %not_in% c(78, 83)) %>%
+  select(savvy_id, week_no, label, answer) %>%
+  spread(key = label,  value = answer)
+
+for(i in 1:length(names(survey_summary)[-c(1, 2)])) {
+  col <- names(survey_summary)[-c(1, 2)][i]
+  survey_summary[, col] <- factor(survey_summary[, col],  
+                                  levels = c("1",  "2",  "3",  "4",  "5"), order = TRUE)
+}
+
+survey_summary$week_no <- factor(survey_summary[, 'week_no'],  levels = c("8", "7", "6", "5", "4", "3", "2", "1"), 
+                                   labels = c("Week 8", "Week 7", "Week 6", "Week 5", "Week 4", "Week 3", 
+                                              "Week 2", "Week 1"))
+
+
+data <- likert(survey_summary[, c(3:5)], grouping = survey_summary[, 2])
+
+main <- plot(data, plot.percent.neutral = FALSE, plot.percent.low = T, plot.percent.high = T, 
+             centered = T, 
+             legend.position = "none", 
+             low.color = "#4897D8", 
+             neurtal.color = "#999999", 
+             high.color = "#F8A055", 
+             panel.strip.color = "#c9c9c9", wrap = 100)  + 
+  theme(strip.text.x = element_text(size = 10,  family = "sans",  color = "#303030"))
+
+week_no <- crossing(savvy_id = survey_summary$savvy_id, week_no = survey_summary$week_no %>% unique())
+weekly_count <- left_join(week_no, survey_summary, by = c("savvy_id", "week_no"))
+
+weekly_count <- weekly_count %>%
+  mutate_each(funs = funs(ifelse(is.na(.), "missing", "complete")), starts_with("Q")) %>%
+  gather(key = "questions", value = "tag", -c(1:2)) %>%
+  group_by(week_no,  questions) %>%
+  summarise(complete = sum(tag == "complete"))
+
+question_labels <- c(
+  "Q20: How are you in control of your diabetes today?" = "Q20", 
+  "Q30: Is the coach supporting your needs and goals?" = "Q30", 
+  "Q80: How useful are the Fitbit group discussions?" = "Q80"
+)
+
+side <- ggplot(weekly_count, aes(x = week_no, y = complete))  + 
+  geom_bar(stat = "identity", width = 0.9)  + 
+  facet_wrap(questions~., strip.position = "top", ncol = 1, labeller  =  as_labeller(question_labels))  + 
+  geom_text(data = weekly_count, 
+            aes(label = complete, x = week_no, y = complete + 1), 
+            position =  position_dodge(width = 1), 
+             vjust = 0.5, 
+             size = 3.5)  + 
+   coord_flip()  + 
+   xlab("") + 
+   ylab("Number of Respondents")  + 
+   theme(axis.ticks.y = element_blank(), 
+         axis.text.y = element_blank(), 
+         panel.background = element_rect(fill = "white",  color  = "#D3D3D3"), 
+         strip.background = element_rect(fill = 	"#c9c9c9"), 
+         text = element_text(family = "sans",  color = "#303030"))
+
+ grid.arrange(main, side, ncol = 2, widths = c(3/4, 1/4), 
+              bottom = textGrob("*Left-hand percentages indicate those who answered 1 and 2; 
+                                Right-hand percentages indicate those who answered 4 and 5.", 
+                                gp = gpar(fontsize = 11, fontfamily = "sans", 
+                                fontface = "italic", color = "#303030"), just = "left", x = 0), 
+              top = textGrob("Figure 7. Weekly Survey Likert Questions",  
+                             gp = gpar(fontsize = 15, fontfamily = "sans", fontface = "bold", color  =  "#303030")))
+```
+
+```{r, fig.width = 13, fig.height = 7}
+#------------------------------ MONTHLY QUESTIONS ------------------------------#
+## Q77, Q99, Q82, and Q83 are asked in the 4th and 6th week based on the data.
+## Q82 is not in the original coaching call guide; Q83 is an open-ended question so it is omitted here.
+## 1 savvy_id has these questions asked on their 3rd week and not on their 4th week;
+## so we just lumped Week 3 and Week 4 into Mid of the Period, and Week 6 as End of the Period.
+
+monthly_questions <- left_join(survey_spe2, labels, by = c("question_nbr")) %>%
+  filter(type == "monthly")
+
+survey_summary <- monthly_questions %>%
+  arrange(savvy_id,  week_no) %>%
+  filter(question_nbr %not_in% c(78, 83)) %>%
+  select(savvy_id, week_no, label, answer) %>%
+  spread(key = label,  value = answer)
+
+for(i in 1:length(names(survey_summary)[-c(1, 2)])) {
+  col <- names(survey_summary)[-c(1, 2)][i]
+  survey_summary[, col] <- factor(survey_summary[, col],  levels = c("1",  "2",  "3",  "4",  "5"), order = TRUE)
+}
+
+survey_summary$week_no <- factor(survey_summary[, 'week_no'],  levels  =  c("6", "4", "3"), 
+                                 labels = c("Week 6", "Week 4", "Week 3"))
+
+survey_summary$week_no <- fct_other(survey_summary$week_no, 
+                                    drop = c("Week 4",  "Week 3"),  other_level = "Mid of Period") %>%
+                          factor(labels = c("End of Period",  "Mid of Period"))
+
+data <- likert(survey_summary[, -c(1:2)], grouping = survey_summary[, 2])
+
+main <- plot(data, plot.percent.neutral = FALSE, plot.percent.low = T, plot.percent.high = T, 
+             centered = T, 
+             legend.position = "none", 
+             low.color = "#4897D8", 
+             neurtal.color = "#999999", 
+             high.color = "#F8A055", 
+             panel.strip.color = "#c9c9c9", wrap = 100)  + 
+  theme(strip.text.x = element_text(size = 10,  family  =  "sans",  color = "#303030"))
+
+week_no <- crossing(savvy_id = survey_summary$savvy_id, week_no = survey_summary$week_no %>% unique())
+monthly_count <- left_join(week_no, survey_summary, by = c("savvy_id", "week_no"))
+
+monthly_count <- monthly_count %>%
+  mutate_each(funs = funs(ifelse(is.na(.), "missing", "complete")), starts_with("Q")) %>%
+  gather(key = "questions", value = "tag", -c(1:2)) %>%
+  group_by(week_no,  questions) %>%
+  summarise(complete = sum(tag == "complete"))
+
+question_labels <- c(
+  "Q77: How is has it been for you to access the Fitbit groups?" = "Q77", 
+  "Q79: How likely are you to recommend the Fitbit group discussion to others?" = "Q79", 
+  "Q81: How helpful were the Fitbit group discussions?" = "Q81", 
+  "Q82: How satisfied are you with the Fitbit group discussions?" = "Q82"
+)
+
+side <- ggplot(monthly_count, aes(x = week_no, y = complete))  + 
+  geom_bar(stat = "identity", width = 0.9)  + 
+  facet_wrap(questions~., strip.position = "top", ncol = 1, labeller  =  as_labeller(question_labels))  + 
+  geom_text(data = monthly_count, 
+            aes(label = complete, x = week_no, y = complete + 1), 
+            position  =   position_dodge(width  =  1), 
+            vjust  =  0.5, 
+            size = 3.5)  + 
+  coord_flip()  + 
+  xlab("") + 
+  ylab("Number of Respondents")  + 
+  theme(axis.ticks.y = element_blank(), 
+        axis.text.y = element_blank(), 
+        panel.background = element_rect(fill = "white",  color  = "#D3D3D3"), 
+        strip.background = element_rect(fill = 	"#c9c9c9"), 
+        text = element_text(family = "sans",  color = "#303030"))
+
+grid.arrange(main, side, ncol = 2, widths = c(3/4, 1/4), 
+             bottom = textGrob("*Left-hand percentages indicate those who answered 1 and 2; 
+                               Right-hand percentages indicate those who answered 4 and 5.", 
+                               gp = gpar(fontsize = 11, fontfamily = "sans", 
+                                         fontface = "italic", color = "#303030"), just = "left", x = 0), 
+             top = textGrob("Figure 8. Monthly Survey Likert Questions",  
+                            gp = gpar(fontsize = 15, fontfamily = "sans", fontface = "bold", color  =  "#303030")))
+```
+
+```{r,  echo = FALSE, fig.width  =  13,  fig.height = 8}
+options("httr_oauth_cache"="~/.httr-oauth",  httr_oob_default = TRUE)
+
+Q_survey <- "select question_nbr, savvy_id, coaching_date, question, answer, 
+              coaching_data_create_date_time_ct from GMP.fact_coaching where question_nbr=20 or 
+              question_nbr=30 or question_nbr between 77 and 83"
+
+survey_data <- query_exec(Q_survey, project = "research-00",  use_legacy_sql = FALSE,  max_pages = Inf)
+
+
+survey1 <- survey_data %>% 
+  filter(!is.na(answer)) %>% 
+  filter(coaching_date >= as.Date("2018-08-20"))
+
+
+Q78 <- survey1 %>% 
+  filter(question_nbr == 78)
+Q78$new_answer <- ifelse(nchar(Q78$answer) <= 2,  paste0(Q78$answer, "/"), Q78$answer )
+Q78[c(13:14),  7] <- "no/"
+
+
+Q78_tag <- read_csv("Q78_tag.csv")
+Q78_tag[51, 2] <- "some topics"
+Q78_tag[55, 2] <- "groups by age"
+Q78_tag[26, 2] <- "no"
+Q78_tag$cat1 <- gsub(" ", "_",  Q78_tag$category)
+Q78_tag$nkeyword <- ifelse(nchar(Q78_tag$keyword) <= 2,  paste0(Q78_tag$keyword, "/"), Q78_tag$keyword )
+
+
+Cat <- unique(Q78_tag$cat1)
+
+for (q in 1:length(Cat)){
+  as <- Q78_tag %>% 
+    filter(cat1 == Cat[q])
+    arg <- paste0("c(", paste0("'", "%" , unique(as$nkeyword),  "%", "'",  collapse = ", "),  ")")
+    asign <- paste0("Q78$",  Cat[q],  " <- Q78$new_answer %like any% eval(parse(text = arg))")
+    eval(parse(text = asign))
+}
+
+
+Q83 <- survey1 %>% 
+  filter(question_nbr == 83)
+
+Q83_tag <- read_csv("Q83_tag.csv")
+Q83_tag[7, 2] <- "NA"
+Q83_tag$cat1 <- gsub(" ", "_",  Q83_tag$category)
+Q83_tag$cat1 <- gsub("'", "_",  Q83_tag$cat1)
+
+Cat2 <- unique(Q83_tag$cat1)
+for (q in 1:length(Cat2)){
+  as <- Q83_tag %>% 
+    filter(cat1 == Cat2[q])
+  arg <- paste0("c(", paste0("'", "%" , unique(as$keyword),  "%", "'",  collapse = ","),  ")")
+  asign <- paste0("Q83$", Cat2[q], " <- Q83$answer %like any% eval(parse(text = arg))")
+  eval(parse(text = asign))
+}
+
+
+# -----------------------------Q78---------------------------------------------
+q78a <- Q78 %>% 
+  filter(savvy_id %in% spe_stend$savvy_id)
+# sequence of 60 days, first 14 days, and last 14 days
+
+q78_me <- tibble()
+
+for (i in 1:20){
+  d <- tibble(savvy_id = spe_stend$savvy_id[i], 
+      coaching_date = seq.Date(spe_stend$start_date[i],  spe_stend$new_end[i],  by = 1))
+  k<-d %>% 
+    mutate(week = week(coaching_date)) 
+  j <- k %>% 
+    group_by(savvy_id,  week) %>%
+    summarise(n  = n()) %>% 
+    mutate(weekseq = row_number()) %>% 
+    select(-n)
+  d <- left_join(k, j,  by = c("savvy_id",  "week"))
+  d <- left_join(d,  q78a,  by = c("savvy_id",  "coaching_date"))
+  d <- d %>% 
+    filter(!is.na(coach_issues))
+  q78_me <- rbind(q78_me,  d)
+}
+
+q78_me[q78_me$weekseq == 9, 4] <- 8
+
+q78c <- q78_me %>% 
+  gather(key = "Categories",  value = "Values",  10:19)
+
+
+q78d <- q78c %>% 
+  group_by(weekseq,  Categories) %>% 
+  summarise(cnt = sum(Values)) %>% 
+  mutate(prop = round(cnt/sum(cnt), 2),  week = paste("Week",  weekseq)) %>% 
+  filter(cnt!=0)
+
+q78d$Categories <- gsub('\\_',  ' ',  q78d$Categories)
+  
+
+ggplot(data = q78d,  aes(x = Categories,  y = prop)) + 
+  geom_bar(stat = "identity") +  ylim(0, 1) + 
+  facet_wrap(~week,  nrow=2)  + 
+  coord_flip()  + 
+  scale_y_continuous(labels = scales::percent,  limits = c(0, 1),  breaks = seq(0, 1, by = 0.20)) + 
+  xlab("CATEGORIES")  + 
+  ylab("") + 
+  ggtitle("Figure 9. Q78: How can we improve the group discussion?") + 
+  labs(caption = "*Actual Count.") + 
+  geom_label(data = q78d,  aes(x = Categories,  y = prop-0.05), 
+             label = q78d$cnt,  color = "#3A5199",  inherit.aes  =  FALSE,  size = 3) + 
+  scale_x_discrete(limits = 
+                     c("others", 
+                       "no comment", 
+                       "change grouping structure", 
+                       "more activities", 
+                       "more participants", 
+                       "more relevant discussions", 
+                       "needs to motivate", 
+                       "needs to provide technical assistance", 
+                       "positive feedback"))  + 
+  theme(axis.text.x = element_text(vjust = 0.5, size = 12), 
+        text = element_text(family = "sans",  color = "#303030",  size = 12), 
+        title = element_text(face = "bold",  color = "#303030",  size = 15), 
+        axis.text = element_text(size = 12), 
+        axis.title = element_text(size = 14,  face = "bold"), 
+        plot.title = element_text(size = 15,  hjust = 0.5), 
+        plot.subtitle = element_text(face = "italic"), 
+        plot.caption = element_text(hjust = 0,  size = 12,  color  = "#3A5199", face = "italic"), 
+        panel.background = element_rect(fill = "white",  color  = "#D3D3D3"), 
+        panel.grid.major.y = element_line(colour = "#D3D3D3", linetype = "dashed"), 
+        strip.text.x = element_text(size = 12))
+
+# --------------------------------Q83--------------------------------------------------
+q83a <- Q83 %>% 
+  filter(savvy_id %in% spe_stend$savvy_id)
+# sequence of 60 days,  first 14 days,  and last 14 days
+
+q83_me <- tibble()
+
+for (i in 1:20){
+  d <- tibble(savvy_id = spe_stend$savvy_id[i], 
+      coaching_date = seq.Date(spe_stend$start_date[i],  spe_stend$new_end[i],  by = 1))
+  k<-d %>% 
+    mutate(week = week(coaching_date)) 
+  j <- k %>% 
+    group_by(savvy_id,  week) %>%
+    summarise(n  = n()) %>% 
+    mutate(weekseq = row_number()) %>% 
+    select(-n)
+  d <- left_join(k, j,  by = c("savvy_id",  "week"))
+  d <- left_join(d,  q83a,  by = c("savvy_id",  "coaching_date"))
+  d <- d %>% 
+    filter(!is.na(no_comment))
+  q83_me <- rbind(q83_me,  d)
+}
+
+
+q83c <- q83_me %>% 
+  gather(key = "Categories",  value = "Values",  9:14)
+
+q83d <- q83c %>% 
+  group_by(Categories) %>% 
+  summarise(cnt = sum(Values)) %>% 
+  mutate(prop = round(cnt/sum(cnt), 2)) %>% 
+  filter(cnt!=0)
+
+q83d$Categories <- gsub('\\_',  ' ',  q83d$Categories)
+
+```
+
+```{r,  fig.width = 10,  fig.height = 4, fig.align = 'center'}
+ggplot(data = q83d,  aes(x = Categories,  y = prop)) + 
+  geom_bar(stat = "identity") +  
+  coord_flip() + 
+  scale_y_continuous(labels = scales::percent,  limits = c(0, 1),  breaks = seq(0, 1, by = 0.20)) + 
+  xlab("CATEGORIES")  + 
+  ylab("") + 
+  geom_label(aes(x = Categories,  y = prop-0.03), label = q83d$cnt,  color = "#3A5199", size = 3) + 
+  ggtitle("Figure 10. Q83: What aspect of the group discussion helped?") + 
+  labs(caption = "*Actual Count.") + 
+  scale_x_discrete(limits=
+                     c("others", 
+                       "no comment", 
+                       "healthy diet discussions", 
+                       "other participants  goals", 
+                       "other participants  progress", 
+                       "shared experiences"))  + 
+  theme(axis.text.x = element_text(vjust = 0.5, size = 10), 
+        text = element_text(family = "sans",  color = "#303030",  size = 11), 
+        title = element_text(face = "bold",  color = "#303030",  size = 14), 
+        axis.text = element_text(size = 11), 
+        axis.title = element_text(size = 13,  face = "bold"), 
+        plot.title = element_text(size = 14,  hjust  =  0.5), 
+        plot.subtitle = element_text(face = "italic"), 
+        plot.caption = element_text(hjust = 0,  size = 12,  color  = "#3A5199", face = "italic"), 
+        panel.background = element_rect(fill = "white",  color  = "#D3D3D3"), 
+        panel.grid.major.y = element_line(colour = "#D3D3D3", linetype = "dashed"), 
+        strip.text.x = element_text(size = 10))
+
+```
+
+<br>
+
+### __Discussion__
+
+<p>This sprint intended to answer whether belonging to an asynchronous online support group has an influence on the participants' diabetes management as measured by their physiological outcomes -- their EGV level and steps activity. This study recognized physiological improvement in two perspectives: 1) improvement of SPE2 participants vs. a comparison group matched by demographics and RAF score, and 2) improvement of SPE2 participants over time, i.e. before and after the experiment.</p>
+
+<p>Results of the experiment show that the participants' engagement in the Fitbit group were very low, asummed to be primarily due to their need of technical assistance and lack of motivation. Participants were also not able to consistently give feedback throughout the survey period. Nonetheless, in times where participants have responses, there are some who expressed positive feedback towards the group discussions, saying that knowing they have shared experiences with others have made them feel not alone, and in one particular "Glucose" group, have even made them develop a sense of mutual responsibility.</p>
+
+<p>With regards to the EGV level and steps activity analysis, initial observation on the EGV level of the SPE2 participants have been promisingly good. Compared to the comparison group, not only that their time out of range, i.e. proportion where EGV reading is outside the acceptable range, is noticeably fewer, but their EGV level is also more stable throughout the 60-day period. There are also more participants who felt and became more in-control of their diabetes, as measured by their before and after TIR, and as revealed by the survey results. Unfortunately, further testing showed that there is no significant difference in the average TIR of the SPE2 participants compared to the comparison group. Neither there is any difference too in their TIR before and after the experiment. On the other hand, an interesting pattern was observed in the SPE2 participants' activity level -- their daily steps were evidently higher during their first two weeks compared to all the other weeks. Further testing also supports that there is indeed a significant decrease in the participants' average daily steps from when they were just new to the Fitbit group. Other than that, and as confirmed by the permutation test results, their (weighted) average daily steps are similar than that of the comparison group. </p>
+
+<p>In general, while there is low engagement from the SPE2 participants in the Fitbit group, it is believed that some of them have genuinely appreciated their stay in the group. It took a while for them to be certain of their perception on the usefulness of the group discussions, but over time they felt more in control of their diabetes as they stay longer in the program. Unfortunately, this sentiment was not translated well enough to be seen in their EGV levels and steps activity.</p>

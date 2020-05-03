@@ -1,0 +1,2146 @@
+---
+title: "Undrestanding the Enrollment Rate Drop in Key Account Motion"
+author: "__Joyvalerie Mondejar__, __Nikko Joe Ramal__"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+output:
+  html_document:
+    number_sections: no
+    toc: yes
+    toc_depth: 3
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+geometry: margin=0cm
+editor_options:
+  chunk_output_type: console
+---
+
+<!-- 
+HTML comment
+-->
+`r # Comment using R code, note that in-line R statements require use of single back-quote characters (upper-left part of keyboard)`
+
+<!-- This is a button that appears when scrolling down that returns to the top of the page -->
+<script>
+window.onscroll = function() {scrollFunction()};
+
+function scrollFunction() {
+    if (document.body.scrollTop > 20 || document.documentElement.scrollTop > 20) {
+        document.getElementById("myBtn").style.display = "block";
+    } else {
+        document.getElementById("myBtn").style.display = "none";
+    }
+}
+function topFunction() {
+    document.body.scrollTop = 0; // For Safari
+    document.documentElement.scrollTop = 0; // For Chrome, Firefox, IE and Opera
+}
+</script>
+<button onclick="topFunction()" id="myBtn" title="Return to top" style = "display: none; position: fixed; top: 40px; left: 20px;">Return to Top</button>
+
+<!-- This style tag changes the formatting of div tags that are of class tabset -->
+<style>
+.source {
+  padding: 0;
+}
+body {
+  margin: 0px;
+  padding: 0px;
+  text-align: justify;
+}
+nav {                               <!-- <nav> tag defines a set of navigation links. --> 
+  width: 0;
+}
+div.tabset {                        <!-- <nav> tag defines a set of navigation links. --> 
+  font-size: 16px;
+}
+tabset level2 {
+  background-color: orange;
+}
+div.tabset a {
+  text.align: center;
+}
+code {
+  background-color: #EEDDFF;
+}
+</style>
+
+<script>
+$(document).ready(function(){
+    $('[data-toggle="popover"]').popover(); 
+});
+</script>
+
+ <!-- Nikko's Code for tables -->
+
+ <style type="text/css">
+  caption {
+    color: #303030;
+    font-size: 1.1em;
+    font-weight: bold;
+    text-align: center;
+  }
+  table{
+    border: 0.75px solid #303030;
+    font-size: 14px;
+  }
+  th {
+  text-align:center;
+  background-color: #d7def2;
+  }
+  p{
+  font-family: Helvetica;
+  line-height:1.5em;
+  }
+</style>
+
+
+```{r setup, include=FALSE}
+library(data.table)
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(kableExtra)
+library(htmlTable)
+library(knitr)
+library(plotly)
+library(scales)
+library(stats)
+library(qwraps2)
+library(tableone)
+library(arsenal)
+library(boot)
+library(tidyverse)
+library(outliers)
+library(effsize)
+library(pwr)
+
+rm(list = ls())
+load("Data/mm.rda")
+
+## This makes the default alignment for all captions 'center'
+knitr::opts_chunk$set(fig.align = 'center')
+
+## This is used to generate auto-numbered figures
+source("HTMLFigureCaptions.R")
+source("helper_functions.R")
+# source("Read_Data.R")
+source(file = "nramal_motionGrant/functions.R")
+
+theme_update(text = element_text(size = 15))
+
+theme_diri = theme(legend.position = "bottom", plot.title = element_text(hjust = 0.5))
+
+set.seed(87543)
+
+uhg1 = rgb(red = 45, green = 95, blue = 167, maxColorValue = 255)      # #2d5fa7    UHG blue
+uhg2 = rgb(red = 247, green = 152, blue = 55, maxColorValue = 255)     # #f79837    UHG orange
+uhg3 = rgb(red = 114, green = 192, blue = 96, maxColorValue = 255)     # #72c060    UHG green
+uhg4 = rgb(red = 234, green = 75, blue = 77, maxColorValue = 255)      # #ea4b4d    UHG red
+uhg5 = rgb(red = 2, green = 142, blue = 167, maxColorValue = 255)      # #028ea7    UHG teal
+uhg6 = rgb(red = 103, green = 93, blue = 168, maxColorValue = 255)     # #675da8    UHG purple
+uhgGrey = rgb(red = 166, green = 166, blue = 166, maxColorValue = 255)
+
+text_size = 9
+theme_joy = theme(axis.line = element_line(color = uhgGrey, size = 2),
+                  panel.grid.major.y = element_line(color = uhgGrey, size = 0.1, linetype = 2),
+                  panel.background = element_rect(fill = 'white'),
+                  axis.ticks = element_line(size = 1.5),
+                  axis.ticks.length = unit(0.15, 'cm'),
+                  axis.text.x = element_text(size = text_size, vjust = 0.9),
+                  axis.text.y = element_text(size = text_size),
+                  axis.title = element_text(size = text_size, face = 'bold'),
+                  legend.position = 'bottom',
+                  legend.title = element_text(size = text_size),
+                  legend.text = element_text(size = text_size - 2),
+                  legend.margin = margin(t = 0.2, r = 0.2, l = 0.2, b = 0.2, unit = 'cm'),
+                  panel.spacing = unit(5, 'pt'),
+                  strip.text = element_text(size = text_size + 2),
+                  plot.title = element_text(size = text_size + 3, face = 'bold', hjust = 0.5))
+
+text_size_ = 7
+theme_joy_single = theme(axis.line = element_line(color = uhgGrey, size = 2),
+                  panel.grid.major.y = element_line(color = uhgGrey, size = 0.1, linetype = 2),
+                  panel.background = element_rect(fill = 'white'),
+                  axis.ticks = element_line(size = 1.5),
+                  axis.ticks.length = unit(0.15, 'cm'),
+                  axis.text.x = element_text(size = text_size_, vjust = 0.9),
+                  axis.text.y = element_text(size = text_size_),
+                  axis.title = element_text(size = text_size_, face = 'bold'),
+                  legend.position = 'bottom',
+                  legend.title = element_text(size = text_size_),
+                  legend.text = element_text(size = text_size_ - 2),
+                  legend.margin = margin(t = 0.2, r = 0.2, l = 0.2, b = 0.2, unit = 'cm'),
+                  panel.spacing = unit(5, 'pt'),
+                  strip.text = element_text(size = text_size_ + 1),
+                  plot.title = element_text(size = text_size_ + 1, face = 'bold', hjust = 0.5))
+
+```
+
+
+# Introduction {.tabset .tabset-pills}
+
+<p> The ventures team of the Positioning and Messaging Motion Initiative have access to the monthly motion report which provides current and past year month enrollment and participation statistics. It has been noticed in these reports that although the enrollment rate in the Motion Program has increased between 2017 and 2018, there was a substancial drop in the enrollment rate for the Key Accounts Motion from 64% in July 2017 to 42% in July 2018. There was a suspicion that the observation might be connected to a shift from bulk-shipping devices to directly shipping devices to members’ homes. Also, there was a dramatic drop in the percent of active among those enrolled members.</p>
+
+<p> With these findings, it is important to establish and understand the characteristics that exist between the members from July 2017 and July 2018 to better guide the future motion enrollment and engagement efforts. Through this grant, we would like to compare the member characteristics, particularly those related to health between those 1) enrolled and 2) actively walking among those enrolled in July 2017 and in July 2018.</p>
+
+# Methods {.tabset .tabset-pills}
+
+<p> This grant used the healthcare claims and motion data for Key Account motion eligible members. The two groups that were compared were those members of employers eligible for Key Account motion program in July 2017 and those that were eligible in July 2018. The monthly data going back to one year prior of the current year month were also gathered. For consistency, the researchers have used the same definitions of eligible, enrolled, and active as in the monthly motion report, i.e., had at least 100 steps during at least one day and do not have an  incentive adjustment less than $40 during the month. The researchers conducted several analyses to examine the differences between enrolled members in July 2018 compared to those enrolled in July 2017.</p>
+
+__Data cleaning done__  
+
+ * Those individuals not enrolled in UHC plan were removed.
+ * Row records which do not belong to either groups were removed.
+ * Members not associated with Key Account motion were also removed.
+ * We also suspected that members younger than 18 years old are not eligible to Key Account motion program.
+ * Duplicates were removed.
+ * Gender that were 'U' were converted to NAs.
+ * Median household income that is 0 were converted to NAs.
+ * RAF scores that were 0 were converted to NAs.
+ * Missing or negative allowed amounts were replaced with 0.
+
+Numerical variables such as age, median household income, RAF score, and allowed amounts were compared using independent-samples t-test between the two groups. Categorical variables such as gender, subscriber indicator, area of residence, condition diagnoses were compared using chi-squared test between the two groups. Median household income and spending amounts that lie beyond 99.5 percentile of their normalised values were removed before the analyses. RAF scores that lie beyond 99.9 percentile of their normalised values were removed before the analyses. If the proportions are significantly different between the two groups, the size of the difference is quantified using Cohen's h. Hedges' g was used to quantify the effect size of statistically different means between the two groups.  
+
+
+ 
+# Results {.tabset .tabset-pills}
+
+To better understand the enrollment drop in Key Accounts Motion, we examined the differences of eligible, enrolled and active among eligible and enrolled members between July 2017 and July 2018. We compared these groups with regard to patient demographics, certain disease conditions, and healthcare costs.
+
+## Eligibility and Enrollment
+
+```{r, echo=FALSE, eval=FALSE}
+dim(mm); dim(unique(mm, by = c("Indv_Sys_ID", "Year_Mo"))) 
+# Number of rows that have duplicates
+dim(mm) - dim(unique(mm, by = c("Indv_Sys_ID", "Year_Mo")))  # 1943    
+# Number of unique individuals in the whole table
+dim(unique(mm, by = c("Indv_Sys_ID")))              
+# Number of unique individuals in population 1
+dim(unique(mm[Group1_Flag == 1 & Year_Mo == 201707 & !is.na(ComEnrld_Yr_Mo)], by = c("Indv_Sys_ID"))) 
+dim(unique(mm[Group1_Flag == 1 & !is.na(ComEnrld_Yr_Mo)], by = c("Indv_Sys_ID")))
+
+# Number of unique individuals in population 2
+dim(unique(mm[Group2_Flag == 1 & Year_Mo == 201807 & !is.na(ComEnrld_Yr_Mo)], by = c("Indv_Sys_ID"))) 
+dim(unique(mm[Group2_Flag == 1 & !is.na(ComEnrld_Yr_Mo)], by = c("Indv_Sys_ID"))) 
+
+# count of individuals that have duplicates (UHC enrolled, motion eligible, but different motion enrolled flag)
+# mm[,.N, keyby = .(Groups, Year_Mo, Indv_Sys_ID)][N > 1][!is.na(Year_Mo)]
+mm[!is.na(ComEnrld_Yr_Mo) & Group1_Flag == 1 ,.N,
+   keyby = .(Group1_Flag, Year_Mo, Indv_Sys_ID)][N > 1][,.N,Indv_Sys_ID]  # 1 IDs
+
+mm[!is.na(ComEnrld_Yr_Mo) & Group2_Flag == 1 ,.N, 
+   keyby = .(Group2_Flag, Year_Mo, Indv_Sys_ID)][N > 1][,.N,Indv_Sys_ID]  # 6 IDs with 32 records
+
+```
+
+```{r, echo=FALSE, include=FALSE}
+mm[!is.na(ComEnrld_Yr_Mo) & (!is.na(Group1_Flag | !is.na(Group2_Flag))) & KA_Flag == 1 & Age > 18, IDyrmo := paste(Indv_Sys_ID, Year_Mo, sep = ""), by = c('Indv_Sys_ID', 'Year_Mo')]
+
+# Count of row duplicates
+tmp1 = mm[!is.na(ComEnrld_Yr_Mo) & Group1_Flag == 1 & KA_Flag == 1 & Age >18, .N, keyby = .(Indv_Sys_ID, Year_Mo, IDyrmo)][N>1] # 4 row duplicates in Grp 1
+tmp2 = mm[!is.na(ComEnrld_Yr_Mo) & Group2_Flag == 1 & KA_Flag == 1 & Age >18, .N, keyby = .(Indv_Sys_ID, Year_Mo, IDyrmo)][N>1] # 25 row duplicates in Grp 2
+
+# getting the 2nd row record among those with duplicates in Group 1
+tmp1_ = mm[IDyrmo %in% tmp1$IDyrmo]   # # 8 rows with duplicates
+tmp1__ = tmp1_[which(duplicated(tmp1_$IDyrmo, fromLast = TRUE) == FALSE)]  # cleaned  4 rows
+# getting the 2nd row record among those with duplicates in Group 2
+tmp2_ = mm[IDyrmo %in% tmp2$IDyrmo]
+tmp2_ = tmp2_[Indv_Sys_ID != 1381674208]
+tmp2__ = tmp2_[which(duplicated(tmp2_$IDyrmo, fromLast = TRUE) == FALSE)]   # 21 rows
+tmp2__ = tmp2__[!is.na(Year_Mo_Enrollment)]   # 21 rows
+
+tmp_ = rbind(tmp1_, tmp2_)   # 54 rows
+tmp__ = rbind(tmp1__, tmp2__) # 25 rows
+
+mm_without_dup = mm[IDyrmo %in% tmp1$IDyrmo | IDyrmo %in% tmp2$IDyrmo]  # 54 rows
+
+# removed from mm those duplicates
+mm = mm[!IDyrmo %in% mm_without_dup$IDyrmo]
+mm = rbind(mm, tmp__)   # 465729     47
+
+# removed those not enrolled in a UHC plan
+mm = mm[!is.na(ComEnrld_Yr_Mo)]   # 391587     47
+# removed those without any group
+mm = mm[!(is.na(Group1_Flag) & is.na(Group2_Flag))]  # 389192     47
+# removed those not with Key account motion flag
+mm = mm[KA_Flag == 1]  # 359530     47
+# removed 13 Individuals
+mm = mm[Age >= 18]  # 359492     47
+setkeyv(mm, c('Indv_Sys_ID', 'Year_Mo'))
+```
+
+```{r, echo=FALSE}
+## --------- Other data preparation -------------------
+mm[, Med_Income := ifelse(Med_Income == 0, NA, Med_Income)]
+mm[, Med_Income_log := log(Med_Income)]
+# pop[, Med_Income_log1 := log(Med_Income + 1e+04)]
+mm[Gdr_Cd == 'U', Gdr_Cd := NA ]
+mm[, Gdr_Cd := factor(Gdr_Cd)]
+mm[, RAF_Score := ifelse(RAF_Score == 0, NA, RAF_Score)]
+# mm[,lapply(.SD, summary), .SDcols = c('IP_Allw_Amt', 'OP_Allw_Amt', 'DR_Allw_Amt', 'Rx_Allw_Amt', 'ER_Allw_Amt', 'Total_Allw_Amt', 'Adjustment_Incentive' )]
+mm[IP_Allw_Amt < 0 | is.na(IP_Allw_Amt), IP_Allw_Amt := 0]
+mm[OP_Allw_Amt < 0 | is.na(OP_Allw_Amt), OP_Allw_Amt := 0]
+mm[DR_Allw_Amt < 0 | is.na(DR_Allw_Amt), DR_Allw_Amt := 0]
+mm[Rx_Allw_Amt < 0 | is.na(Rx_Allw_Amt), Rx_Allw_Amt := 0]
+mm[ER_Allw_Amt < 0 | is.na(ER_Allw_Amt), ER_Allw_Amt := 0]
+mm[Total_Allw_Amt < 0 | is.na(Total_Allw_Amt), Total_Allw_Amt := 0]
+```
+
+Key Account motion enrollment rate dropped from 69.1% in July 2017 down to 45.8% in July 2018. There are discrepancies in the counts of eligible members as well as the enrolled members largely because the monthly motion report included those members who were not enrolled with any UHG plan and those that were not eligible to Key Account motion, i.e., either associated with small business or public accounts. The reason being was that some of the individuals's identity from the AWS motion data did not match with the PHI of individuals from NGIS.
+
+```{r, echo=FALSE}
+pop1 = mm[Group1_Flag == 1 & Year_Mo == 201707, ]  # 14101    49
+pop1[, Population := "July 2017"]
+pop2 = mm[Group2_Flag == 1 & Year_Mo == 201807, ]  # 36432    49
+pop2[, Population := "July 2018"]
+pop = rbind(pop1, pop2)
+pop[, Population := factor(Population)]
+
+ee1 = pop1[,.(Eligible = .N, Enrolled = sum(Enroll_Flag)),
+           by = .(Year_Mo)][,.(Year_Mo, Eligible, Enrolled, '%' = Enrolled/Eligible * 100)]
+ee1 = ee1[,lapply(.SD, round, digits = 1), by = .(Year_Mo)]
+
+ee2 = pop2[,.(Eligible = .N, Enrolled = sum(Enroll_Flag)), by = .(Year_Mo)][,.(Year_Mo, Eligible, Enrolled, '%' = Enrolled/Eligible * 100)]
+ee2 = ee2[,lapply(.SD, round, digits = 1), by = .(Year_Mo)]
+ee = rbind(ee1, ee2)
+
+htmlTable(ee,
+          align = "lrrr",
+          rnames = F,                                            # No numbers on rows
+          rgroup = c("Group 1", "Group 2"),                      # Labels for sets of rows
+          n.rgroup = c(1, 1),                                    # Number of rows for each group
+          col.rgroup = c("none", "#BBDDFF"),                     # Alternating colors for background
+          # cgroup = c("", "Enrollment"),                        # Grouping columns
+          # n.group = c(1, 2),                                   # # Number of columns in each group
+          css.cell = "padding-right: 2em; padding-left: 2em;",   # Horizontal padding, remember units
+          css.rgroup = 'color: #AA0000; font-weight: bold;',     # Format row group headers
+          caption = "Enrollment Rate",                           # Caption
+          css.table = "margin: 2em auto;"                        # margin space above and below the tbale. Puttin 'auto' in the margin of the table style centers the table on the page
+          )
+```
+
+```{r, echo=FALSE}
+# pop[Group1_Flag ==1 & Group2_Flag == 1,.N]   # 19405
+# pop[Indv_Sys_ID %in% pop1$Indv_Sys_ID & Indv_Sys_ID %in% pop2$Indv_Sys_ID,.N]  # 15494
+
+tmp1 = mm[Group1_Flag == 1 & Year_Mo == 201707,.N,keyby= Indv_Sys_ID]
+tmp2 = mm[Group2_Flag == 1 & Year_Mo == 201807,.N, keyby= Indv_Sys_ID]
+tmp = mm[Group2_Flag ==1 &  Year_Mo == 201807 & Indv_Sys_ID %in% tmp1$Indv_Sys_ID,.N]
+
+# tmp1[tmp2,nomatch = 0]  # 7747
+# tmp2[tmp1,nomatch = 0]  # 7747
+tmp1.enr = mm[Group1_Flag == 1 & Year_Mo == 201707 & Enroll_Flag == 1,.N,keyby= Indv_Sys_ID]
+tmp2.enr = mm[Group2_Flag == 1 & Year_Mo == 201807 & Enroll_Flag == 1,.N, keyby= Indv_Sys_ID]
+tmp.enr = mm[Group2_Flag ==1 &  Year_Mo == 201807 & Indv_Sys_ID %in% tmp1.enr$Indv_Sys_ID,.N]
+
+```
+
+There were `r comma(tmp)` eligible members in July 2017 that were still eligible in July 2018 and there were `r comma(tmp.enr)` members enrolled in both year months.
+
+```{r, echo=FALSE, eval=FALSE}
+quantile(pop$Age, probs = seq(0.95, 1, 0.001), na.rm = FALSE,names = TRUE)     # 99.9
+quantile(pop$Med_Income, probs = seq(0.95, 1, 0.001), na.rm = TRUE,names = TRUE)     # 99.8 or 99.9
+quantile(pop$DR_Allw_Amt, probs = seq(0.95, 1, 0.001), na.rm = FALSE,names = TRUE)     # 99.9  
+quantile(pop$Rx_Allw_Amt, probs = seq(0.95, 1, 0.001), na.rm = FALSE,names = TRUE)     # 99.9  
+quantile(pop$ER_Allw_Amt, probs = seq(0.95, 1, 0.001), na.rm = FALSE,names = TRUE)     # 99.9  
+quantile(pop$Total_Allw_Amt, probs = seq(0.95, 1, 0.001), na.rm = FALSE,names = TRUE)  # 99.8
+
+
+summary(pop$Total_Allw_Amt)
+ggplot(pop[Total_Allw_Amt < quantile(Total_Allw_Amt, 0.99)], aes(x=Total_Allw_Amt, colour=Population)) + geom_density()
+
+ggplot(pop, aes(x=Total_Allw_Amt, fill=Population)) +
+    geom_histogram(binwidth=.5, position="dodge")
+
+bartlett.test(Total_Allw_Amt ~ Population, data = pop[Total_Allw_Amt < quantile(Total_Allw_Amt, 0.999)])  # p-value = 2.2e-16 there is significant difference in variance
+pop[Total_Allw_Amt < quantile(Total_Allw_Amt, 0.999),.(MeanAge = mean(Total_Allw_Amt), SDAge = sd(Total_Allw_Amt), VarAge = var(Total_Allw_Amt)), keyby = Population]
+
+t.test( Total_Allw_Amt ~ Population, data =  pop[Total_Allw_Amt < quantile(Total_Allw_Amt, 0.993)], var.equal = T)   # p-value = 0.935
+t.test( Total_Allw_Amt ~ Population, data =  pop[Total_Allw_Amt < quantile(Total_Allw_Amt, 0.993)], var.equal = F)   # p-value = 0.9377
+bartlett.test(log(Total_Allw_Amt + 1) ~ Population, data = pop[Cnt_Active >= 1])   # p-value 0.1201  same var
+t.test( log(Total_Allw_Amt +1) ~ Population, data =  pop[Cnt_Active >= 1], var.equal = T)   # p-value = 0.0002297
+tab1 <- tableby(Population ~ kwt(Total_Allw_Amt), data = pop); summary(tab1, text = TRUE,pfootnote = TRUE)  # ns
+```
+
+
+```{r, echo=FALSE, include=FALSE, eval=FALSE}
+ggplot(pop, aes(x = Age, fill = Population)) + geom_density(alpha = .3)  # same variance
+ggplot(pop, aes(x = Med_Income, fill = Population)) + geom_density(alpha = .3) # same var but not normal
+ggplot(pop, aes(x = log(Med_Income), fill = Population)) + geom_density(alpha = .3)  # somewhat normal, same var
+ggplot(pop, aes(x = log(Med_Income + 1e+04), fill = Population)) + geom_density(alpha = .3)
+
+# equalityof variance
+bartlett.test(Age ~ Population, data = pop)  # p-value = 0.001595 there is significant difference in age variance
+pop[,.(MeanAge = mean(Age), SDAge = sd(Age), VarAge = var(Age)), keyby = Population]
+library(car)
+# Levene's test with one independent variable
+leveneTest(Med_Income ~ Population, data = pop)     # p-value = 0.2514
+leveneTest(log(Med_Income) ~ Population, data = pop)     # p-value = 0.5971
+```
+
+## Eligible {.tabset .tabset-pills}
+
+### Demographics
+
+```{r, echo=FALSE, include=FALSE}
+vars <- c('Age', 'Gdr_Cd', 'Sbscr', 'USR_Ind', 'Med_Income')
+tmp_mm =  pop[,.(Age, Gdr_Cd, Sbscr, USR_Ind, Med_Income, Year_Mo_, Year_Mo)]
+tmp_mm[, Year_Mo_ := ifelse(Year_Mo == 201707, "Jul 2017", "Jul 2018")]
+tmp_mm[, Year_Mo_ := factor(Year_Mo_, levels = c("Jul 2017", "Jul 2018"))]
+demo <- CreateTableOne(vars = vars, strata = "Year_Mo_", data = tmp_mm, test = FALSE)
+# htmlTable(kableone(demo))
+# kableone(demo)
+
+htmlTable(kableone(print(demo, smd = FALSE)),
+          # ctable=c("solid", "double"),
+          # align = "rrr",
+          rnames = F,                                            # No numbers on rows
+          # rgroup = c("Member", "Geography"),                   # Labels for sets of rows
+          # n.rgroup = c(1),                                     # Number of rows for each group
+          # col.rgroup = c("none", "#BBDDFF"),                   # Alternating colors for background
+          cgroup = c("Population"),                              # Grouping columns
+          n.group = c(1),                                        # Number of columns in each group
+          css.cell = "padding-right: 1em; padding-left: 1em;",   # Horizontal padding, remember units
+          css.rgroup = 'color: #AA0000; font-weight: bold;',     # Format row group headers
+          caption = "Demographics profile of those who were eligible for Key Account motion program",        # Caption
+          css.table = "margin: 1em auto;"                        # margin space above and below the tbale. Puttin 'auto' in the margin of the table style centers the table on the page
+          )
+```
+
+```{r, results='asis', echo=FALSE}
+# t.test( Age ~ Population, data =  pop, var.equal = T)   p-value = 3.169e-16
+# t.test( Age ~ Population, data =  pop, var.equal = F)   p-value < 2.2e-16
+# tab1 <- tableby(Population ~ kwt(Age), data = pop); summary(tab1, text = TRUE,pfootnote = TRUE)  # sig
+labels(pop)  <- c(Gdr_Cd = 'Gender', Sbscr = "Subscriber", USR_Ind = 'Area', Med_Income = 'Median Household Income')
+tab1 <- tableby(Population ~ anova(Age, "medianq1q3", "meansd", "range")  + Gdr_Cd + Sbscr + USR_Ind, 
+                chisq.correct = FALSE, total=FALSE,  cat.simplify=TRUE, data = pop)
+# tab1 <- tableby(Population ~ anova(Age, "medianq1q3", "meansd", "range"), total=FALSE, data = pop[Age < quantile(Age, 0.999)])
+# summary(tab1, text = TRUE)
+tab2 <- tableby(Population ~ Med_Income, data = pop,
+                control = tableby.control(numeric.stats =  c("N","Nmiss", "medianq1q3", "meansd", "range"),
+                                          total = FALSE))
+# summary(tab2, text = TRUE)   # 0.057
+# tab3 <- tableby(Population ~ log(Med_Income), data = pop,
+#                 control = tableby.control(numeric.stats =  c("Nmiss", "medianq1q3", "meansd", "range"),
+#                                 total = FALSE))
+# summary(tab3, text = TRUE)          
+tab12 = merge(tab1, tab2)
+# summary(tab12, text = TRUE)
+```
+
+```{r, echo=FALSE}
+# Cohen'd of Income
+# Hedges’ g and Cohen’s d are extremely similar. Both have an upwards bias (an inflation) in results of up to about 4%. The two statistics are very similar except when sample sizes are below 20, when Hedges’ g outperforms Cohen’s d. Hedges’ g is therefore sometimes called the corrected effect size.
+# Income
+effectsize_income = cohen.d(pop$Med_Income, pop$Population, hedges.correction = TRUE, na.rm = T)
+effectsize_income_mag = effectsize_income$magnitude
+effectsize_income_estimate = abs(round(effectsize_income$estimate[[1]], 3))
+# Age
+effectsize_age = cohen.d(pop$Age, pop$Population, hedges.correction = TRUE, na.rm = T)
+effectsize_age_mag = effectsize_age$magnitude
+effectsize_age_estimate = abs(round(effectsize_age$estimate[[1]], 3))
+
+# Cohen's h 
+tab12_tmp = as.data.frame(tab12)
+tmp = tab12_tmp %>% 
+  filter(variable %in% c("Gdr_Cd", "USR_Ind", "Sbscr"), term %in% c("countpct", "Sbscr"))
+F1_prop = tmp$`July 2017`[[1]][2] /100
+F2_prop = tmp$`July 2018`[[1]][2] /100
+F_effect_size = abs(ES.h(F2_prop, F1_prop))
+
+S1_prop = tmp$`July 2017`[[5]][2] /100
+S2_prop = tmp$`July 2018`[[5]][2] /100
+S_effect_size = abs(ES.h(S2_prop, S1_prop))
+R1_prop = tmp$`July 2017`[[6]][2] /100
+R2_prop = tmp$`July 2018`[[6]][2] /100
+R_effect_size = abs(ES.h(R2_prop, R1_prop))
+Eff.Size = data.table(Variable = c("Female", "Suburban", "Rural"),
+                      Estimate = c(F_effect_size, S_effect_size, R_effect_size),
+                      Magnitude = rep("negligible", 3))
+
+```
+
+  * Eligible members in July 2018 were about a year younger than those eligible in July 2017. However, this is a `r effectsize_age_mag` difference.   
+  * There are more females in July 2018 than in July 2017.
+  * There are more who lives in suburban areas and less in rural areas among the July 2018 eligible members.  
+  * The household median income of eligible members in July 2018 is $1051 more than the income of eligible members in July 2017. The effect size is `r effectsize_income_estimate`, a `r effectsize_income_mag` estimate.
+
+```{r echo=FALSE, results='asis'}
+summary(tab12, pfootnote = FALSE, digits = 2, 
+        title ='Demographics profile of those who were eligible for Key Account motion program')
+```
+
+```{r echo=FALSE, results='asis'}
+kable(Eff.Size, caption = "Effect size of the difference", digits = 3) %>% 
+  kable_styling(full_width = FALSE, bootstrap_options = "condensed")
+```
+
+```{r, echo=FALSE, eval=FALSE}
+tab2 <- tableby(Population ~ Med_Income, data = pop,
+                control = tableby.control(numeric.stats =  c("Nmiss", "medianq1q3", "meansd", "range"),
+                                          total = FALSE))
+summary(tab12, text = T)
+tab2_tmp = as.data.frame(tab12)
+tab2_tmp
+names(tab2_tmp)
+# [1] "variable"      "term"          "label"         "variable.type" "July 2017"    
+# [6] "July 2018"     "Total"         "test"          "p.value"   
+tmp = tab2_tmp %>% 
+  filter(variable %in% c("Age", "Med_Income","Gdr_Cd", "USR_Ind", "Sbscr_Ind"), term %in% c("meansd", "countpct", "N"))
+x1_bar = tmp$`July 2017`[[8]][1]
+s1 = tmp$`July 2017`[[8]][2]
+x2_bar = tmp$`July 2018`[[8]][1]
+s2 = tmp$`July 2018`[[8]][2]
+n1 = tmp$`July 2017`[[7]][1]
+n2 = tmp$`July 2018`[[7]][1]
+
+sd = sqrt(((s1^2 * (n1 - 1)) + (s2^2 * (n2 - 1)))/ (n1 + n2 - 2))
+g = (x1 - x2)/sd    # -0.04431127
+```
+
+
+```{r, echo=FALSE, warning=FALSE, fig.height=3, fig.width=7, eval=FALSE}
+p1 <- ggplot(pop, aes(x = Age, fill = Population)) + geom_density(alpha = .3) +   # same variance\
+  ggtitle("Among eligibles") + 
+  # scale_color_manual(values = c('July 2017' = savv1, 'July 2018' = savvy2)) +
+  scale_fill_manual(values = c(uhg1, uhg2)) +
+  theme_joy + guides(fill = guide_legend(title = NULL))
+
+p2 <- ggplot(pop, aes(x = Med_Income, fill = Population)) + geom_density(alpha = .3) + # somewhat normal, same var
+  ggtitle("Among eligibles") + 
+  scale_fill_manual(values = c(uhg1, uhg2)) +
+  theme_joy + guides(fill = guide_legend(title = NULL))
+grid.arrange(p1, p2, ncol = 2)
+```
+
+```{r echo=FALSE, eval=FALSE}
+df_CAD%>%
+  ungroup(MemberID)%>%
+  distinct(MemberID, .keep_all=TRUE)%>%
+  mutate(CMD_Flag = if_else(CMD_Flag == 1, "CMD", "non-CMD")) %>%
+  ggplot(aes(x=n_months, y=..density..,fill=factor(CMD_Flag, labels=c("CMD", "non-CMD"))))+
+  geom_histogram(position = "dodge")+
+  labs(x="Active months", y="Relative Frequency",
+       title="Distribution of Active Months for All Savers Members with at least CAD ",
+       fill="")+
+  theme_savvy()+
+  scale_fill_manual(values = c("#febe01","#4f81bd"))
+
+
+  ggplot(data = pop, aes(x=Age, y=..density..,fill=Population))+
+  geom_histogram()+
+  labs(x="Age",
+       title="Among eligibles ",
+       fill="")+
+  scale_fill_manual(values = c(uhg1, uhg2)) +
+  theme_joy
+  
+ggplot(data = pop, aes(x=Age, fill = Population)) + geom_density()
+```
+
+
+```{r, echo=FALSE, warning=FALSE, fig.height=3, fig.width=7}
+p1 <- ggplot(data = pop, aes(Age, fill = Population)) + 
+  geom_histogram(bins = 20,
+                 aes(y = stat(width*density)),
+                 position = "identity", alpha = 0.6) +
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  ggtitle("Among eligibles") + ylab("Percentage") +
+  scale_fill_manual(values = c(uhg1, uhg2)) +
+  theme_joy + guides(fill = guide_legend(title = NULL))
+
+p2 <- ggplot(data = pop, aes(Med_Income, fill = Population)) + 
+  geom_histogram(bins = 20,
+                 aes(y = stat(width*density)),
+                 position = "identity", alpha = 0.6) +
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  ggtitle("Among eligibles") + ylab("Percentage") + xlab("Median Household Income") +
+  scale_fill_manual(values = c(uhg1, uhg2)) +
+  theme_joy + guides(fill = guide_legend(title = NULL))
+grid.arrange(p1, p2, ncol = 2)
+```
+
+### Health
+
+```{r health eligible, echo=FALSE, warning=FALSE, include=FALSE}
+vars <- c('RAF_Score', 'T2D_Flag', 'Hypertension_Flag', 'Dep_Anx_Flag', 'COPD_Flag','CHF_Flag','RA_Flag', 'ChronicPain_Flag')
+tmp_mm =  pop[,.(Indv_Sys_ID, Population, RAF_Score, T2D_Flag, Hypertension_Flag, Dep_Anx_Flag, COPD_Flag,CHF_Flag,
+                 RA_Flag, ChronicPain_Flag, Year_Mo_, Year_Mo)]
+tmp_mm[, Year_Mo_ := ifelse(Year_Mo == 201707, "Jul 2017", "Jul 2018")]
+tmp_mm[, Year_Mo_ := factor(Year_Mo_, levels = c("Jul 2017", "Jul 2018"))]
+
+tmp_mm[, c('T2D_Flag', 'Hypertension_Flag', 'Dep_Anx_Flag', 'COPD_Flag','CHF_Flag','RA_Flag', 'ChronicPain_Flag') := lapply(.SD, as.factor),.SDcols = c('T2D_Flag', 'Hypertension_Flag', 'Dep_Anx_Flag', 'COPD_Flag','CHF_Flag','RA_Flag', 'ChronicPain_Flag')]
+health <- CreateTableOne(vars = vars, strata = "Year_Mo_", data = tmp_mm, test = FALSE)
+# htmlTable(kableone(health1))
+
+htmlTable(kableone(print(health, smd = FALSE)),
+          # ctable=c("solid", "double"),
+          # align = "rrr",
+          rnames = F,                                            # No numbers on rows
+          # rgroup = c("Member", "Geography"),                   # Labels for sets of rows
+          # n.rgroup = c(1),                                     # Number of rows for each group
+          # col.rgroup = c("none", "#BBDDFF"),                    # Alternating colors for background
+          cgroup = c("Year Month"),                              # Grouping columns
+          n.group = c(1),                                        # # Number of columns in each group
+          css.cell = "padding-right: 1em; padding-left: 1em;",   # Horizontal padding, remember units
+          css.rgroup = 'color: #AA0000; font-weight: bold;',     # Format row group headers
+          caption = "Eligible: RAF score and Percentage Prevalence",                                # Caption
+          css.table = "margin: 5em auto;"                        # Puttin 'auto' in the margin of the table style centers the table on the page
+          )
+```
+
+```{r Eligible health, results='asis', warning=FALSE, echo=FALSE}
+labels(pop)  <- c(RAF_Score = 'RAF Score', T2D_Flag = "Type 2 Diabetes", Hypertension_Flag = 'Hypertension', 
+                  Dep_Anx_Flag = 'Depression / Anxiety', COPD_Flag = 'COPD', CHF_Flag = 'CHF', RA_Flag = 'RA',
+                  ChronicPain_Flag = 'Chronic Pain')
+
+# tab1 <- tableby(Population ~ RAF_Score, data = pop,
+#                 control = tableby.control(numeric.stats=c("Nmiss","medianq1q3","meansd","range"), 
+#                                           numeric.test = "kwt", numeric.simplify = TRUE, total=FALSE))
+tab1 <- tableby(Population ~ RAF_Score, data = pop,
+                control = tableby.control(numeric.stats=c("Nmiss","medianq1q3","meansd","range"), 
+                                          numeric.simplify = TRUE, total=FALSE))
+# summary(tab1, text = TRUE)
+# tab3 <- tableby(Population ~ log(RAF_Score), data = pop,numeric.simplify = TRUE, total=FALSE)
+# summary(tab3, text=TRUE)
+
+# tab1 <- tableby(Population ~ RAF_Score,
+#                 total = FALSE, data=pop, 
+#                 control=tableby.control(numeric.stats=c("Nmiss","n_outliers","mean_out", "range_out"), 
+#                                         stats.labels=list(Mmiss = "N-miss", n_outliers = 'N-outliers', mean_out = 'Mean (SD)', 
+#                                                           range_out = 'Range')))
+# mypval <- data.frame(aovout_func_joy(pop, columns =c("RAF_Score"), strata = "Year_Mo_", pertle = 0.995))
+# tab2 <- modpval.tableby(tab1, mypval, use.pname = TRUE)
+# # summary(tab2, text = TRUE)
+# summary(tab2, pfootnote = TRUE, digits = 2, title = 'Comparison of healthcare $ spending')
+
+tab2 <- tableby(Population ~ T2D_Flag + Hypertension_Flag + Dep_Anx_Flag + COPD_Flag + CHF_Flag + RA_Flag +
+                  ChronicPain_Flag, cat.simplify = TRUE, total=FALSE, data = pop)
+# summary(tab2, text = TRUE)
+tab12 <- merge(tab2, tab1)
+# summary(tab12, text = TRUE)
+
+```
+
+```{r Eligible health out 995, results='asis', warning=FALSE, echo=FALSE, eval=FALSE}
+tab1 <- tableby(Population ~ RAF_Score,
+                total = FALSE, data = pop,
+                control = tableby.control(numeric.stats=c("Nmiss", "n_outliers", "medianq1q3_out",
+                                                          "mean_out", "range_out"),
+                                        stats.labels=list(Mmiss = "N-miss", n_outliers = 'N-outliers', 
+                                                          medianq1q3_out = 'Median (Q1, Q3)', 
+                                                          mean_out = 'Mean (SD)', range_out = 'Range')))
+# summary(tab1, text = TRUE)
+mypval <- data.frame(aovout_func_joy(pop, columns =c("RAF_Score"), strata = "Year_Mo_", pertle = 0.995))
+tab_out_995 <- modpval.tableby(tab1, mypval, use.pname = TRUE)
+# summary(tab_out_995, text = TRUE)
+```
+
+```{r Eligible health out, results='asis', warning=FALSE, echo=FALSE}
+tab1 <- tableby(Population ~ RAF_Score,
+                total = FALSE, data = pop,
+                control = tableby.control(numeric.stats=c("Nmiss", "n_outliers_999", "medianq1q3_out_999",
+                                                          "mean_out_999", "range_out_999"),
+                                        stats.labels=list(Mmiss = "N-miss", n_outliers_999 = 'N-outliers', 
+                                                          medianq1q3_out_999 = 'Median (Q1, Q3)', mean_out_999 = 'Mean (SD)',
+                                                          range_out_999 = 'Range')))
+# summary(tab1, text = TRUE)
+mypval <- data.frame(aovout_func_joy(pop, columns =c("RAF_Score"), strata = "Year_Mo_", pertle = 0.999))
+tab_out <- modpval.tableby(tab1, mypval, use.pname = TRUE)
+# summary(tab_out, text = TRUE)
+```
+
+```{r echo=FALSE, eval=FALSE}
+tmp_pop1 = pop[Population == "July 2017",.(RAF_Score, Population)]
+tmp_pop2 = pop[Population == "July 2018" & !is.na(RAF_Score),.(RAF_Score, Population)]
+tmp_pop1$out <- scores(tmp_pop1[,1], type="t", prob = 0.995)
+tmp_pop2$out <- scores(tmp_pop2[,1], type="t", prob = 0.995)
+tmp_pop = rbind(tmp_pop1, tmp_pop2)
+summary(tmp_pop[out== TRUE])
+summary(tmp_pop[out== TRUE & Population == "July 2017"])
+summary(tmp_pop[out== TRUE & Population == "July 2018"])
+
+tab_raf_score <- tableby(Population ~ RAF_Score, data = tmp_pop[out == FALSE],
+                control = tableby.control(numeric.stats=c("Nmiss","medianq1q3","meansd","range"), 
+                                          numeric.simplify = TRUE, total=FALSE))
+# summary(tab_raf_score, text = TRUE)
+summary(tab_raf_score, pfootnote = FALSE, digits = 2, title = "RAF comparison after removing outliers by t scores")
+
+t.test( RAF_Score ~ Population, data =  pop[RAF_Score <= quantile(RAF_Score, 0.995, na.rm = T) ], var.equal = T)  
+t.test( RAF_Score ~ Population, data =  tmp_pop[out == "FALSE"], var.equal = T)  
+t.test( RAF_Score ~ Population, data =  tmp_pop[out == "FALSE"], var.equal = F) 
+
+t.test( RAF_Score ~ Population, data =  pop[RAF_Score <= quantile(RAF_Score, 0.995, na.rm = T)], var.equal = F)   
+t.test( RAF_Score ~ Population, data =  pop[RAF_Score <= quantile(RAF_Score, 0.995, na.rm = T)], var.equal = F)  
+```
+
+```{r echo=FALSE, eval=FALSE}
+tmp_pop1 = pop[Population == "July 2017",.(RAF_Score, Population)]
+tmp_pop2 = pop[Population == "July 2018" & !is.na(RAF_Score),.(RAF_Score, Population)]
+tmp_pop1[,out := ifelse(RAF_Score <= quantile(RAF_Score, 0.995), "FALSE", "TRUE" )]
+tmp_pop2[,out := ifelse(RAF_Score <= quantile(RAF_Score, 0.995), "FALSE", "TRUE" )]
+tmp_pop = rbind(tmp_pop1, tmp_pop2)
+
+summary(tmp_pop[out== "TRUE" & Population == "July 2017"])
+summary(tmp_pop[out== "TRUE" & Population == "July 2018"])
+
+tab_raf_quant <- tableby(Population ~ RAF_Score, data = tmp_pop[out == "FALSE"],
+                control = tableby.control(numeric.stats=c("Nmiss","medianq1q3","meansd","range"), 
+                                          numeric.simplify = TRUE, total=FALSE))
+# summary(tab_raf_quant, text = TRUE)
+summary(tab_raf_quant, pfootnote = FALSE, digits = 2, title = "RAF comparison after removing outliers by percentile")
+```
+
+```{r echo=FALSE}
+tab_out_tmp = as.data.frame(tab_out)
+tmp = tab_out_tmp %>% 
+  filter(variable %in% c("RAF_Score"), term %in% c("mean_out_999"))
+R1_mean = tmp$`July 2017`[[1]][1]   # 0.931
+R2_mean = tmp$`July 2018`[[1]][1]   # 0.793
+mean_diff = round(abs(R1_mean - R2_mean), 2)
+
+```
+
+```{r without extreme RAF, echo=FALSE}
+new_pop_raf_el <- new_pop_raf(pop, enroll_flag = "N")
+# new_pop_raf_el[,.(Mean = mean(RAF_Score), SD = sd(RAF_Score)), keyby = Population]
+```
+
+
+```{r, echo=FALSE }
+effectsize_raf = cohen.d(new_pop_raf_el$RAF_Score, new_pop_raf_el$Population, hedges.correction = TRUE, 
+                         na.rm = TRUE)
+effectsize_raf_mag = effectsize_raf$magnitude
+effectsize_raf_estimate = round(abs(effectsize_raf$estimate[[1]]), 3)
+```
+
+  * Prevalence of disease conditions do not differ between the two groups.
+  * The RAF scores of July 2018 eligible members is `r mean_diff` lower than those of July 2017 eligible members. The effect size is `r effectsize_raf_estimate`, a `r effectsize_raf_mag` estimate. 
+  
+```{r echo= FALSE, results='asis'}
+summary(tab12, pfootnote = FALSE, digits = 2, title = "RAF score and percentage prevalence")
+```
+
+```{r echo= FALSE, results='asis'}
+summary(tab_out, pfootnote = FALSE, digits = 2, title = "RAF score (excluding 0.1% extreme normalized values)")
+```
+
+
+To examine the prevalence further, continuous UHC plan enrollment from January to July of the corresponding year was considered. The prevalence of diseases still do not significantly differ between the two groups.
+
+```{r echo= FALSE, results='asis'}
+conditions1 = data.table(create_chronic_tab_func(mm[Group1_Flag == 1], year_mo_included = 1))
+conditions2 = data.table(create_chronic_tab_func(mm[Group2_Flag == 1], year_mo_included = 2))
+cd1 = pop1[,-c(31:37)]
+cd2 = pop2[,-c(31:37)]
+setkeyv(conditions1, c("Indv_Sys_ID"))  ; setkeyv(conditions2, c("Indv_Sys_ID"))
+cd1 = cd1[conditions1, nomatch = 0]
+cd2 = cd2[conditions2, nomatch = 0]
+
+tmp_mm = rbind(cd1, cd2)
+
+tab_prev <- tableby(Population ~ T2D_Flag + Hypertension_Flag + Dep_Anx_Flag + COPD_Flag + CHF_Flag + RA_Flag +
+                  ChronicPain_Flag, data = tmp_mm,  total = FALSE, cat.simplify = TRUE)
+# summary(tab_prev, text = TRUE)
+
+summary(tab_prev, pfootnote = FALSE, digits = 2, title = "Jan - July percentage prevalence")
+```
+
+```{r, echo=FALSE, warning=FALSE, fig.height=3, fig.width=4, eval=FALSE}
+ggplot(pop, aes(x = RAF_Score, fill = Population)) + 
+  geom_histogram(bins = 30, 
+                 aes(y = stat(width*density)), 
+                 position = "identity", alpha = 0.6) +  # same variance\
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  ggtitle("Among eligibles") + ylab("Percentage") + xlab("RAF Score") +
+  scale_fill_manual(values = c(uhg1, uhg2)) +
+  theme_joy + guides(fill = guide_legend(title = NULL))
+```
+
+```{r, echo=FALSE, warning=FALSE, fig.height=3, fig.width=4, eval=FALSE}
+# By t scores
+tmp_pop1 = pop[Population == "July 2017",.(RAF_Score, Population)]
+tmp_pop2 = pop[Population == "July 2018" & !is.na(RAF_Score),.(RAF_Score, Population)]
+tmp_pop1$out <- scores(tmp_pop1[,1], type="t", prob = 0.999)
+tmp_pop2$out <- scores(tmp_pop2[,1], type="t", prob = 0.999)
+tmp_pop = rbind(tmp_pop1, tmp_pop2)
+# summary(tmp_pop[out== TRUE & Population == "July 2017"])
+# summary(tmp_pop[out== TRUE & Population == "July 2018"])
+
+ggplot(tmp_pop[out == FALSE], aes(x = RAF_Score, fill = Population)) + 
+  geom_histogram(bins = 30, 
+                 aes(y = stat(width*density)), 
+                 position = "identity", alpha = 0.6) +  # same variance\
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  ggtitle("Among eligibles (excluding 0.1% extreme normalized values)") + 
+  ylab("Percentage") + xlab("RAF Score") +
+  scale_fill_manual(values = c(uhg1, uhg2)) +
+  theme_joy + guides(fill = guide_legend(title = NULL))
+```
+
+```{r eligible RAF histogram, echo=FALSE, warning=FALSE, fig.height=3, fig.width=4}
+plot_out(pop, enroll_flag = "N")
+```
+
+```{r echo=FALSE, eval=FALSE}
+# By percentiles
+tmp_pop1 = pop[Population == "July 2017",.(RAF_Score, Population)]
+tmp_pop2 = pop[Population == "July 2018" & !is.na(RAF_Score),.(RAF_Score, Population)]
+tmp_pop1[,out := ifelse(RAF_Score <= quantile(RAF_Score, 0.997), "FALSE", "TRUE" )]
+tmp_pop2[,out := ifelse(RAF_Score <= quantile(RAF_Score, 0.997), "FALSE", "TRUE" )]
+tmp_pop = rbind(tmp_pop1, tmp_pop2)
+setkeyv(tmp_pop, "Population")
+summary(tmp_pop[out== "TRUE" & Population == "July 2017"])
+summary(tmp_pop[out== "TRUE" & Population == "July 2018"])
+
+summary(tmp_pop[out== "FALSE" & Population == "July 2017"])
+summary(tmp_pop[out== "FALSE" & Population == "July 2018"])
+
+
+ggplot(tmp_pop[out == "FALSE"], aes(x = RAF_Score, fill = Population)) + 
+  geom_histogram(bins = 30, 
+                 aes(y = stat(width*density)), 
+                 position = "identity", alpha = 0.3) +  # same variance\
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  ggtitle("Among eligibles") + ylab("Percentage") + xlab("RAF Score")
+  scale_fill_manual(values = c(uhg1, uhg2)) +
+  theme_joy + guides(fill = guide_legend(title = NULL))
+
+```
+
+```{r, echo=FALSE, warning=FALSE, fig.height=3, fig.width=4, eval=FALSE}
+ggplot(data = pop, aes(log(RAF_Score), fill = Population)) + 
+  geom_histogram(bins = 30,
+                 aes(y = stat(width*density))) +
+  geom_density(alpha = .3) +
+  scale_y_continuous(labels = percent_format()) +
+  ggtitle("Among eligibles") + 
+  scale_fill_manual(values = c(uhg1, uhg2)) +
+  theme_diri + guides(fill = guide_legend(title = NULL))
+
+
+ggplot(pop, aes(x = RAF_Score, fill = Population)) +
+        geom_density(alpha = .5)
+
+  ggplot(data = pop, aes(x=RAF_Score, y=..density..,fill=Population))+
+  geom_histogram(position = "dodge")+
+  scale_y_continuous(labels = percent_format()) +
+  labs(x="Age",
+       title="Among eligibles ",
+       fill="")+
+  scale_fill_manual(values = c(uhg1, uhg2)) +
+  theme_joy
+```
+
+```{r, echo=FALSE, include=FALSE, eval=FALSE}
+ggplot(pop, aes(x = log(RAF_Score + 10000))) + geom_density()
+ggplot(pop, aes(x = RAF_Score, fill = Population)) + geom_density(alpha = .3)  
+# ggplot(pop, aes(x = RAF_Score, fill = Population)) + geom_density(alpha = .3)  # very far from normal distribution
+pop[Population == 'Population 1',summary(RAF_Score)]
+pop[Population == 'Population 2',summary(RAF_Score)]
+```
+
+
+### Claims
+
+```{r, echo=FALSE, eval=FALSE}
+quantile(pop$IP_Allw_Amt, probs = seq(0.95, 1, 0.001), na.rm = FALSE,names = TRUE)     # 99.9
+quantile(pop$OP_Allw_Amt, probs = seq(0.95, 1, 0.001), na.rm = FALSE,names = TRUE)     # 99.8 or 99.9
+quantile(pop$DR_Allw_Amt, probs = seq(0.95, 1, 0.001), na.rm = FALSE,names = TRUE)     # 99.9  
+quantile(pop$Rx_Allw_Amt, probs = seq(0.95, 1, 0.001), na.rm = FALSE,names = TRUE)     # 99.9  
+quantile(pop$ER_Allw_Amt, probs = seq(0.95, 1, 0.001), na.rm = FALSE,names = TRUE)     # 99.9  
+quantile(pop$Total_Allw_Amt, probs = seq(0.95, 1, 0.001), na.rm = FALSE,names = TRUE)  # 99.8
+
+
+summary(pop$Total_Allw_Amt)
+ggplot(pop[Total_Allw_Amt < quantile(Total_Allw_Amt, 0.99)], aes(x=Total_Allw_Amt, colour=Population)) + geom_density()
+
+ggplot(pop, aes(x=Total_Allw_Amt, fill=Population)) +
+    geom_histogram(binwidth=.5, position="dodge")
+
+bartlett.test(Total_Allw_Amt ~ Population, data = pop[Total_Allw_Amt < quantile(Total_Allw_Amt, 0.999)])  # p-value = 2.2e-16 there is significant difference in variance
+pop[Total_Allw_Amt < quantile(Total_Allw_Amt, 0.999),.(MeanAge = mean(Total_Allw_Amt), SDAge = sd(Total_Allw_Amt), VarAge = var(Total_Allw_Amt)), keyby = Population]
+
+t.test( Total_Allw_Amt ~ Population, data =  pop[Total_Allw_Amt < quantile(Total_Allw_Amt, 0.993)], var.equal = T)   # p-value = 0.935
+t.test( Total_Allw_Amt ~ Population, data =  pop[Total_Allw_Amt < quantile(Total_Allw_Amt, 0.993)], var.equal = F)   # p-value = 0.9377
+bartlett.test(log(Total_Allw_Amt + 1) ~ Population, data = pop[Cnt_Active >= 1])   # p-value 0.1201  same var
+t.test( log(Total_Allw_Amt +1) ~ Population, data =  pop[Cnt_Active >= 1], var.equal = T)   # p-value = 0.0002297
+tab1 <- tableby(Population ~ kwt(Total_Allw_Amt), data = pop); summary(tab1, text = TRUE,pfootnote = TRUE)  # ns
+```
+
+```{r, results='asis', echo=FALSE, eval=TRUE}
+labels(pop)  <- c(IP_Allw_Amt = 'IP', OP_Allw_Amt = "OP", DR_Allw_Amt = 'DR', Rx_Allw_Amt = 'Rx', 
+                  ER_Allw_Amt = 'ER', Total_Allw_Amt = 'Total')
+tab_orig <- tableby(Population ~ IP_Allw_Amt + OP_Allw_Amt + DR_Allw_Amt + Rx_Allw_Amt + ER_Allw_Amt +
+                      Total_Allw_Amt, total = FALSE, data = pop)
+# summary(tab_orig, text = TRUE)
+
+# tab1 <- tableby(Population ~ log(IP_Allw_Amt + 1) + log(OP_Allw_Amt + 1) + log(DR_Allw_Amt + 1) + log(Rx_Allw_Amt + 1) +
+#                   log(ER_Allw_Amt +1) + log(Total_Allw_Amt + 1), total = FALSE, data = pop)
+# summary(tab1, pfootnote = TRUE, digits = 2, title = 'Comparison of log healthcare $ spending')
+```
+
+```{r, results='asis', echo=FALSE}
+labels(pop)  <- c(IP_Allw_Amt = 'IP', OP_Allw_Amt = "OP", DR_Allw_Amt = 'DR', Rx_Allw_Amt = 'Rx', 
+                  ER_Allw_Amt = 'ER', Total_Allw_Amt = 'Total')
+# tab1 <- tableby(Population ~ IP_Allw_Amt + OP_Allw_Amt + DR_Allw_Amt + Rx_Allw_Amt + ER_Allw_Amt + Total_Allw_Amt,
+#                 total = FALSE, data = pop)
+tab1 <- tableby(Population ~ IP_Allw_Amt + OP_Allw_Amt + DR_Allw_Amt + Rx_Allw_Amt + ER_Allw_Amt + Total_Allw_Amt,
+                total = FALSE, data = pop, 
+                control=tableby.control(numeric.stats=c("n_outliers","mean_out", "range_out"), 
+                                        stats.labels=list(n_outliers = 'N-outliers', mean_out = 'Mean (SD)', 
+                                                          range_out = 'Range')))
+# summary(tab1, text = TRUE)
+mypval <- data.frame(aovout_func_joy(pop, columns =c("IP_Allw_Amt", "OP_Allw_Amt", "DR_Allw_Amt", "Rx_Allw_Amt",
+                                                 "ER_Allw_Amt","Total_Allw_Amt"), strata = "Year_Mo_", pertle = 0.995))
+tab2 <- modpval.tableby(tab1, mypval, use.pname = TRUE)
+# summary(tab2, text = TRUE)
+```
+
+```{r without extreme, echo=FALSE}
+new_pop <- wo_extreme_func(data = pop, columns = c("IP_Allw_Amt", "OP_Allw_Amt","DR_Allw_Amt","Rx_Allw_Amt","ER_Allw_Amt","Total_Allw_Amt"), strata = "Year_Mo_", pertle = 0.995)
+
+# pop[,c("IP_score", "OP_score","DR_score","Rx_score","ER_score","Total_score") :=
+#       lapply(.SD, scores(x, type = "t", prob = 0.995)), .(SDcols = c("IP_Allw_Amt", "OP_Allw_Amt","DR_Allw_Amt","Rx_Allw_Amt","ER_Allw_Amt","Total_Allw_Amt"))]
+```
+
+
+On the average, the eligible members in July 2018 have had higher total spend as well as spending for OP and DR visits. However, the effect sizes in the table below suggests that the differences are negligible.
+
+```{r echo=FALSE, results='asis'}
+summary(tab_orig, pfootnote = FALSE, digits = 2, title = 'Comparison of healthcare $ spending')
+```
+
+
+```{r echo=FALSE, results='asis'}
+summary(tab2, pfootnote = FALSE, digits = 2, title = 'Comparison of healthcare $ spending (exluding 0.5% extreme normalized values)')
+```
+
+```{r, echo=FALSE, results='asis'}
+Eff.Size = effectsize_func(pop, columns = c("OP_Allw_Amt", "DR_Allw_Amt", "Total_Allw_Amt"), strata = "Year_Mo_", 
+                           pertle = 0.995, remove_outlier = "Y")
+Eff.Size = Eff.Size[,.(Spend = c('OP', 'DR', 'Total'), Estimate, Magnitude)]
+
+kable(Eff.Size, caption = "Effect size of the difference", digits = 3) %>% 
+  kable_styling(full_width = FALSE, bootstrap_options = "condensed")
+
+# effectsize_ip = cohen.d(new_pop$OP_Allw_Amt[,1], new_pop$OP_Allw_Amt[,2], hedges.correction = TRUE, na.rm = TRUE)
+# effectsize_ip_mag = effectsize_ip$magnitude
+# effectsize_ip_estimate = effectsize_ip$estimate[[1]]
+# 
+# effectsize_op = cohen.d(new_pop$OP_Allw_Amt[,1], new_pop$OP_Allw_Amt[,2], hedges.correction = TRUE, na.rm = TRUE)
+# effectsize_op_mag = effectsize_op$magnitude
+# effectsize_op_estimate = effectsize_op$estimate[[1]]
+# 
+# myeffsize_est <- data.frame(variable )
+```
+
+
+```{r, results='asis', echo=FALSE, eval=FALSE}
+labels(pop)  <- c(IP_Allw_Amt = 'IP', OP_Allw_Amt = "OP", DR_Allw_Amt = 'DR', Rx_Allw_Amt = 'Rx', ER_Allw_Amt = 'ER',
+                  Total_Allw_Amt = 'Total')
+tab1 <- tableby(Population ~ IP_Allw_Amt + OP_Allw_Amt + DR_Allw_Amt + Rx_Allw_Amt + ER_Allw_Amt + Total_Allw_Amt,
+                total = FALSE, data = pop, test = FALSE)
+# summary(tab1, text = TRUE)
+tab1 <- tableby(Population ~ IP_Allw_Amt, total = FALSE, data = pop[IP_Allw_Amt < quantile(IP_Allw_Amt, 0.99)])
+tab2 <- tableby(Population ~ OP_Allw_Amt, total = FALSE, data = pop[OP_Allw_Amt < quantile(OP_Allw_Amt, 0.995)])
+tab3 <- tableby(Population ~ DR_Allw_Amt, total = FALSE, data = pop[DR_Allw_Amt < quantile(DR_Allw_Amt, 0.995)])
+tab4 <- tableby(Population ~ Rx_Allw_Amt, total = FALSE, data = pop[Rx_Allw_Amt < quantile(Rx_Allw_Amt, 0.995)])
+tab5 <- tableby(Population ~ ER_Allw_Amt, total = FALSE, data = pop[ER_Allw_Amt < quantile(ER_Allw_Amt, 0.995)])
+tab6 <- tableby(Population ~ Total_Allw_Amt, total = FALSE, data = pop[Total_Allw_Amt < quantile(Total_Allw_Amt, 0.995)])
+tab <- merge(tab1, tab2)
+tab <- merge(tab, tab3)
+summary(tab1, text = TRUE)
+
+summary(tab, pfootnote = TRUE, digits = 2, title = 'Comparison of healthcare $ spending')
+
+# tab1 <- tableby(Population ~ log(IP_Allw_Amt + 1) + log(OP_Allw_Amt + 1) + log(DR_Allw_Amt + 1) + log(Rx_Allw_Amt + 1) +
+#                   log(ER_Allw_Amt +1) + log(Total_Allw_Amt + 1), total = FALSE, data = pop)
+# summary(tab1, pfootnote = TRUE, digits = 2, title = 'Comparison of log healthcare $ spending')
+```
+
+```{r Eligible Count and Total Spend, echo=FALSE}
+new_pop_total <- wo_extreme_func(data = pop, columns = c( "Total_Allw_Amt"), strata = "Year_Mo_", pertle = 0.995)
+    
+new_pop_total = data.table(new_pop_total[[1]])
+
+Spend = new_pop_total[, .(.N, 'Mean Total Spend' = mean(Total_Allw_Amt, na.rm = T),
+                          'SD Total Spend' = sd(Total_Allw_Amt, na.rm = T)), keyby = Year_Mo_]
+
+kable(Spend, caption = "Eligible Count and Total Spend", digits = 1, format.args = list(big.mark = ',')) %>% 
+  kable_styling(full_width = FALSE, bootstrap_options = 'condensed')
+```
+
+```{r eligible spend by group and category, echo=FALSE, eval=FALSE}
+Spend_cat = pop[,.(.N, IP= mean(IP_Allw_Amt, na.rm = TRUE), OP = mean(OP_Allw_Amt, na.rm = TRUE), 
+                   DR = mean(DR_Allw_Amt, na.rm = TRUE), Rx = mean(Rx_Allw_Amt, na.rm = TRUE), 
+                   ER = mean(ER_Allw_Amt, na.rm = TRUE)), keyby = Year_Mo_]
+setnames(Spend_cat, 'Year_Mo_', 'Year_Mo')
+
+Spend_cat.melt = melt(Spend_cat, id.vars = c('Year_Mo'),
+                      measure.vars = c('IP','OP','DR','Rx','ER'),
+                      variable.name = "Category",
+                      value.name = "Spend")
+
+ggplot(Spend_cat.melt, aes(x = Category, y = Spend, fill = Category)) +
+  geom_bar(stat = "identity",position = position_dodge()) + 
+  scale_fill_manual(values = c(uhg1, uhg2, uhg3, uhg4, uhg5)) +
+  labs(x = '', y = 'Mean Spend $') +
+  ggtitle("Mean spend by category and population") +
+  theme_joy +   
+  # theme(legend.position = "none", plot.title = element_text(hjust = 0.5, face = 'bold'),text = element_text(size = 7),
+  #       axis.text.x = element_text(size = 7), axis.text.y = element_text(size = 7)) +
+  facet_grid(. ~ Year_Mo)
+
+```
+
+```{r eligible spend by group and category wo outliers, echo=FALSE}
+Spend_cat_melt = new_pop_spend(data = pop, enroll_flag = "N")
+
+ggplot(Spend_cat_melt, aes(x=Category, y=Mean, fill=Category)) + 
+  geom_bar(position = position_dodge(), stat = "identity") +
+  geom_errorbar(aes(ymin=Lower, ymax=Upper),
+                width=.2,                    # Width of the error bars
+                position=position_dodge(.9)) +
+  scale_fill_manual(values = c(uhg1, uhg2, uhg3, uhg4, uhg5)) +
+  labs(x = '', y = 'Mean Spend $') +
+  ggtitle("Mean (CI) spend by category and population (excluding 0.5% extreme values)") +
+  theme_joy +
+  facet_grid(. ~ Year_Mo_)
+```
+
+```{r, echo=FALSE, warning=FALSE, fig.height=8, fig.width=7, eval=FALSE}
+new_pop <- wo_extreme_func(data = pop, columns = c("IP_Allw_Amt", "OP_Allw_Amt", "DR_Allw_Amt","Rx_Allw_Amt", "ER_Allw_Amt",
+                                                       "Total_Allw_Amt"), strata = "Year_Mo_", pertle = 0.995)
+    
+new_pop_ip = data.table(new_pop[[1]])
+new_pop_op = data.table(new_pop[[2]])
+new_pop_dr = data.table(new_pop[[3]])
+new_pop_rx = data.table(new_pop[[4]])
+new_pop_er = data.table(new_pop[[5]])
+
+p1 <- ggplot(data = new_pop_ip, aes(x = IP_Allw_Amt, fill = Year_Mo_)) + 
+  geom_histogram(bins = 30, 
+                 aes(y = stat(width*density)), 
+                 position = "identity", alpha = 0.6) +  
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  ggtitle("IP") + ylab("Percentage") +
+  scale_fill_manual(values = c(uhg1, uhg2)) +
+  theme_joy + guides(fill = guide_legend(title = NULL))
+  
+p2 <- ggplot(data = new_pop_op, aes(OP_Allw_Amt, fill = Year_Mo_)) + 
+  geom_histogram(bins = 30,
+                 aes(y = stat(width*density)),
+                 position = "identity", alpha = 0.6) +  
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  ggtitle("OP") + ylab("Percentage") +
+  scale_fill_manual(values = c(uhg1, uhg2)) +
+  theme_joy + guides(fill = guide_legend(title = NULL))
+
+p3 <- ggplot(data = new_pop_dr, aes(DR_Allw_Amt, fill = Year_Mo_)) + 
+  geom_histogram(bins = 30,
+                 aes(y = stat(width*density)),
+                 position = "identity", alpha = 0.6) +  
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  ggtitle("DR") + ylab("Percentage") +
+  scale_fill_manual(values = c(uhg1, uhg2)) +
+  theme_joy + guides(fill = guide_legend(title = NULL))
+
+p4 <- ggplot(data = new_pop_rx, aes(Rx_Allw_Amt, fill = Year_Mo_)) + 
+  geom_histogram(bins = 30,
+                 aes(y = stat(width*density)),
+                 position = "identity", alpha = 0.6) +  
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  ggtitle("Rx") + ylab("Percentage") +
+  scale_fill_manual(values = c(uhg1, uhg2)) +
+  theme_joy + guides(fill = guide_legend(title = NULL))
+
+p5 <- ggplot(data = new_pop_er, aes(ER_Allw_Amt, fill = Year_Mo_)) + 
+  geom_histogram(bins = 30,
+                 aes(y = stat(width*density)),
+                 position = "identity", alpha = 0.6) +  
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  ggtitle("ER") + ylab("Percentage") +
+  scale_fill_manual(values = c(uhg1, uhg2)) +
+  theme_joy + guides(fill = guide_legend(title = NULL))
+
+p6 <- ggplot(data = new_pop_total, aes(Total_Allw_Amt, fill = Year_Mo_)) + 
+  geom_histogram(bins = 30,
+                 aes(y = stat(width*density)),
+                 position = "identity", alpha = 0.6) +  
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  ggtitle("Total") + ylab("Percentage") +
+  scale_fill_manual(values = c(uhg1, uhg2)) +
+  theme_joy + guides(fill = guide_legend(title = NULL))
+title1=textGrob("Distributons of spending among eligible members (excluding 0.5% extreme normalized values)", gp=gpar(fontface="bold"))
+grid.arrange(p1, p2, p3, p4, p5, p6, nrow = 3, ncol = 2, top = title1)
+```
+
+
+The PMPM dollar amounts from the curent month July of the year back to July month of the prior year were also calculated to compare the spending for the different services over the one year period.
+
+```{r  PMPM eligible, echo=FALSE}
+# Group 1
+tmp = mm[Group1_Flag == 1 & Year_Mo == 201707, .N, .(Indv_Sys_ID)][,.(Indv_Sys_ID)]
+count1 = mm[Group1_Flag == 1 & Year_Mo <= 201707 & Indv_Sys_ID %in% tmp$Indv_Sys_ID, .(Group = 'Population 1', .N), keyby = .(Indv_Sys_ID)][,.(Members =.N), keyby = Group]
+tot1 = mm[Group1_Flag == 1 & Year_Mo <= 201707 & Indv_Sys_ID %in% tmp$Indv_Sys_ID,.(.N, IP = sum(IP_Allw_Amt, na.rm = TRUE), OP = sum(OP_Allw_Amt, na.rm = TRUE), 
+                              DR = sum(DR_Allw_Amt, na.rm = TRUE), Rx = sum(Rx_Allw_Amt, na.rm = TRUE), 
+                              ER = sum(ER_Allw_Amt, na.rm = TRUE), Total = sum(Total_Allw_Amt, na.rm = TRUE))]
+PMPM1 = tot1[,.(Group = 'Population 1', Months = N, IP = IP/N, OP = OP/N, DR = DR/N, Rx = Rx/N, ER = ER/N, Total = Total/N)]
+# Group 2
+tmp = mm[Group2_Flag == 1 & Year_Mo == 201807, .N, .(Indv_Sys_ID)][,.(Indv_Sys_ID)]
+count2 = mm[Group2_Flag == 1 & Year_Mo >= 201707 & Indv_Sys_ID %in% tmp$Indv_Sys_ID, .(Group = 'Population 2', .N), keyby = .(Indv_Sys_ID)][,.(Members =.N), keyby = Group]
+tot2 = mm[Group2_Flag == 1 & Year_Mo >= 201707 & Indv_Sys_ID %in% tmp$Indv_Sys_ID,.(.N, IP= sum(IP_Allw_Amt, na.rm = TRUE), OP = sum(OP_Allw_Amt, na.rm = TRUE), 
+                              DR = sum(DR_Allw_Amt, na.rm = TRUE), Rx = sum(Rx_Allw_Amt, na.rm = TRUE), 
+                              ER = sum(ER_Allw_Amt, na.rm = TRUE), Total = sum(Total_Allw_Amt, na.rm = TRUE))]
+PMPM2 = tot2[,.(Group = 'Population 2', Months = N, IP = IP/N, OP = OP/N, DR = DR/N, Rx = Rx/N, ER = ER/N, Total = Total/N)]
+PMPM = rbind(PMPM1, PMPM2)
+count = rbind(count1, count2)
+setkeyv(count, c("Group"))  ;  setkeyv(PMPM, c("Group"))
+PMPM = PMPM[count, nomatch = NA]
+kable(PMPM, caption = "PMPM $ spending for each population", digits = 1, format.args = list(big.mark = ',')) %>%
+  kable_styling(full_width = FALSE, bootstrap_options = 'condensed')
+```
+
+
+
+
+## Enrolled {.tabset .tabset-pills}
+
+### Demographics
+
+```{r, echo=FALSE, include=FALSE}
+vars <- c('Age', 'Gdr_Cd', 'Sbscr', 'USR_Ind', 'Med_Income')
+tmp_mm =  pop[Enroll_Flag == 1,.(Age, Gdr_Cd, Sbscr, USR_Ind, Med_Income, Year_Mo_, Year_Mo)]
+tmp_mm[, Year_Mo_ := ifelse(Year_Mo == 201707, "Jul 2017", "Jul 2018")]
+tmp_mm[, Year_Mo_ := factor(Year_Mo_, levels = c("Jul 2017", "Jul 2018"))]
+demo <- CreateTableOne(vars = vars, strata = "Year_Mo_", data = tmp_mm, test = FALSE)
+# htmlTable(kableone(demo))
+# kableone(demo)
+
+htmlTable(kableone(print(demo, smd = FALSE)),
+          # ctable=c("solid", "double"),
+          # align = "rrr",
+          rnames = F,                                            # No numbers on rows
+          # rgroup = c("Member", "Geography"),                   # Labels for sets of rows
+          # n.rgroup = c(1),                                     # Number of rows for each group
+          # col.rgroup = c("none", "#BBDDFF"),                   # Alternating colors for background
+          cgroup = c("Year Month"),                              # Grouping columns
+          n.group = c(1),                                        # Number of columns in each group
+          css.cell = "padding-right: 1em; padding-left: 1em;",   # Horizontal padding, remember units
+          css.rgroup = 'color: #AA0000; font-weight: bold;',     # Format row group headers
+          caption = "Demographics profile of those who were enrolled in Key Account motion",                                # Caption
+          css.table = "margin: 1em auto;"                        # margin space above and below the tbale. Puttin 'auto' in the margin of the table style centers the table on the page
+          )
+
+```
+
+
+```{r, results='asis', echo=FALSE}
+# bartlett.test(Age ~ Population, data = pop[Enroll_Flag == 1])  # ns
+# t.test( Age ~ Population, data =  pop[Enroll_Flag == 1], var.equal = T)   p-value = 3.227e-08
+# t.test( Age ~ Population, data =  pop[Enroll_Flag == 1], var.equal = F)   p-value = 3.324e-08
+# tab1 <- tableby(Population ~ kwt(Age), data = pop[Enroll_Flag == 1]); summary(tab1, text = TRUE,pfootnote = TRUE)  # sig
+labels(pop)  <- c(Gdr_Cd = 'Gender', Sbscr = "Subscriber", USR_Ind = 'Area', Med_Income = 'Median Household Income')
+tab1 <- tableby(Population ~ anova(Age, "medianq1q3", "meansd", "range")  + Gdr_Cd + Sbscr + USR_Ind, 
+                chisq.correct = FALSE, total=FALSE, cat.simplify=TRUE, data = pop[Enroll_Flag == 1])
+# summary(tab1, text = TRUE)
+tab2 <- tableby(Population ~ Med_Income, data = pop[Enroll_Flag == 1],
+                control = tableby.control(numeric.stats =  c("Nmiss", "medianq1q3", "meansd", "range"),
+                                          total = FALSE))
+# summary(tab2, text = TRUE)   # 0.057
+tab3 <- tableby(Population ~ log(Med_Income), data = pop[Enroll_Flag == 1],
+                control = tableby.control(numeric.stats =  c("Nmiss", "medianq1q3", "meansd", "range"),
+                                total = FALSE))
+# summary(tab3, text = TRUE)          
+tab12 = merge(tab1, tab2)
+# summary(tab12, text = TRUE)
+```
+
+```{r, echo=FALSE, results='asis'}
+Eff.Size = effectsize_func(data = pop[Enroll_Flag == 1], columns = c("Age", "Med_Income"), strata = "Year_Mo_",
+                           pertle = 1, remove_outlier = "N")
+Eff.Size = Eff.Size[,.(Variable = c('Age', 'Median Household Income'), Estimate, Magnitude)]
+
+kable(Eff.Size, caption = "Effect size of the difference", digits = 3) %>% 
+  kable_styling(full_width = FALSE, bootstrap_options = "condensed")
+
+# effectsize_income = cohen.d(pop[Enroll_Flag == 1]$Med_Income, pop[Enroll_Flag == 1]$Population, 
+#                             hedges.correction = TRUE, na.rm = T)
+# effectsize_income_mag = effectsize_income$magnitude
+# effectsize_income_estimate = abs(round(effectsize_income$estimate[[1]], 3))
+# 
+# effectsize_age = cohen.d(pop[Enroll_Flag == 1]$Age, pop[Enroll_Flag == 1]$Population, 
+#                          hedges.correction = FALSE, na.rm = T)
+# effectsize_age_mag = effectsize_age$magnitude
+# effectsize_age_estimate = abs(round(effectsize_age$estimate[[1]], 3))
+
+tab12_tmp = as.data.frame(tab12)
+tmp = tab12_tmp %>% 
+  filter(variable %in% c("Gdr_Cd", "USR_Ind", "Sbscr"), term %in% c("countpct", "Sbscr"))
+F1_prop = tmp$`July 2017`[[1]][2] /100
+F2_prop = tmp$`July 2018`[[1]][2] /100
+F_effect_size = ES.h(F2_prop, F1_prop)
+
+S1_prop = tmp$`July 2017`[[5]][2] /100
+S2_prop = tmp$`July 2018`[[5]][2] /100
+S_effect_size = ES.h(S2_prop, S1_prop)
+R1_prop = tmp$`July 2017`[[6]][2] /100
+R2_prop = tmp$`July 2018`[[6]][2] /100
+R_effect_size = ES.h(R2_prop, R1_prop)
+```
+
+
+* Members enrolled in July 2018 were younger by a quarter of a year than those enrolled in July 2017.  
+* There are more females in July 2018 than in July 2017.  
+* There are more who lives in suburban areas and less in rural areas among the July 2018 eligible members.
+
+```{r echo=FALSE, results='asis'}
+summary(tab12, pfootnote = FALSE, digits = 2, 
+        title ='Demographics profile of those who were eligible for Key Account motion program')
+```
+
+
+```{r, echo=FALSE, warning=FALSE, fig.height=3, fig.width=7}
+p1 <- ggplot(pop[Enroll_Flag == 1], aes(x = Age, fill = Population)) + 
+  geom_histogram(bins = 20,
+                 aes(y = stat(width*density)),
+                 position="dodge") +
+    scale_y_continuous(labels = percent_format(accuracy = 1)) + # same variance\
+  ggtitle("Among enrolled members") + ylab("Percent") +
+  scale_fill_manual(values = c(uhg1, uhg2)) +
+  theme_joy + guides(fill = guide_legend(title = NULL))
+
+p2 <- ggplot(pop[Enroll_Flag == 1], aes(x = Med_Income, fill = Population)) + 
+  geom_histogram(bins = 20,
+                 aes(y = stat(width*density)),
+                 position="dodge") +
+    scale_y_continuous(labels = percent_format(accuracy = 1)) + # somewhat normal, same var
+  ggtitle("Among enrolled members") + ylab("Percent") +
+  scale_fill_manual(values = c(uhg1, uhg2)) +
+  theme_joy + guides(fill = guide_legend(title = NULL))
+grid.arrange(p1, p2, ncol = 2)
+```
+
+
+```{r, echo=FALSE, include=FALSE, eval=FALSE}
+ggplot(pop[Enroll_Flag == 1], aes(x = Age, fill = Population)) + geom_density(alpha = .3)
+ggplot(pop[Enroll_Flag == 1], aes(x = log(Med_Income), fill = Population)) + geom_density(alpha = .3)
+
+# equalityof variance
+bartlett.test(Age ~ Population, data = pop[Enroll_Flag == 1])  # p-value = 0.8224 no significant difference in age variance
+library(car)
+# Levene's test with one independent variable
+leveneTest(Med_Income ~ Population, data = pop[Enroll_Flag == 1& Med_Income != 0])     # p-value = 3.602e-05   
+leveneTest(Med_Income_log ~ Population, data = pop[Enroll_Flag == 1 & Med_Income != 0])     # p-value = 0.009103   
+pop[Enroll_Flag == 1 & Population == 'Population 1' & Med_Income != 0,summary(Med_Income_log)]
+pop[Enroll_Flag == 1 & Population == 'Population 2' & Med_Income != 0,summary(Med_Income_log)]
+```
+
+
+
+### Health
+
+```{r health enrolled, echo=FALSE, warning=FALSE, include=FALSE}
+vars <- c('RAF_Score', 'T2D_Flag', 'Hypertension_Flag', 'Dep_Anx_Flag', 'COPD_Flag','CHF_Flag','RA_Flag', 'ChronicPain_Flag')
+tmp_mm =  pop[Enroll_Flag == 1,.(Indv_Sys_ID, Population, RAF_Score, T2D_Flag, Hypertension_Flag, Dep_Anx_Flag,
+                                 COPD_Flag,CHF_Flag,RA_Flag, ChronicPain_Flag, Year_Mo_, Year_Mo)]
+tmp_mm[, Year_Mo_ := ifelse(Year_Mo == 201707, "Jul 2017", "Jul 2018")]
+tmp_mm[, Year_Mo_ := factor(Year_Mo_, levels = c("Jul 2017", "Jul 2018"))]
+
+tmp_mm[, c('T2D_Flag', 'Hypertension_Flag', 'Dep_Anx_Flag', 'COPD_Flag','CHF_Flag','RA_Flag', 'ChronicPain_Flag') := lapply(.SD, as.factor),.SDcols = c('T2D_Flag', 'Hypertension_Flag', 'Dep_Anx_Flag', 'COPD_Flag','CHF_Flag','RA_Flag', 'ChronicPain_Flag')]
+health <- CreateTableOne(vars = vars, strata = "Year_Mo_", data = tmp_mm, test = FALSE)
+# htmlTable(kableone(health1))
+
+htmlTable(kableone(print(health, smd = FALSE)),
+          # ctable=c("solid", "double"),
+          # align = "rrr",
+          rnames = F,                                            # No numbers on rows
+          # rgroup = c("Member", "Geography"),                   # Labels for sets of rows
+          # n.rgroup = c(1),                                     # Number of rows for each group
+          # col.rgroup = c("none", "#BBDDFF"),                    # Alternating colors for background
+          cgroup = c("Year Month"),                              # Grouping columns
+          n.group = c(1),                                        # # Number of columns in each group
+          css.cell = "padding-right: 1em; padding-left: 1em;",   # Horizontal padding, remember units
+          css.rgroup = 'color: #AA0000; font-weight: bold;',     # Format row group headers
+          caption = "Enrolled: RAF score and Percentage Prevalence",                                # Caption
+          css.table = "margin: 3em auto;"                        # Puttin 'auto' in the margin of the table style centers the table on the page
+          )
+```
+
+```{r, results='asis', echo=FALSE, eval=FALSE}
+labels(pop)  <- c(RAF_Score = 'RAF Score', T2D_Flag = "Type 2 Diabetes", Hypertension_Flag = 'Hypertension', 
+                  Dep_Anx_Flag = 'Depression / Anxiety', COPD_Flag = 'COPD', CHF_Flag = 'CHF', RA_Flag = 'RA',
+                  ChronicPain_Flag = 'Chronic Pain')
+
+tab1 <- tableby(Population ~ RAF_Score + T2D_Flag + Hypertension_Flag + Dep_Anx_Flag + COPD_Flag + CHF_Flag + RA_Flag +
+                  ChronicPain_Flag, total=FALSE, data = pop[Enroll_Flag == 1])
+# summary(tab1, text = TRUE)
+summary(tab1, pfootnote = TRUE, digits = 2)
+
+# htmlTable(as.data.frame(tab1))
+```
+
+
+```{r Enrolled health, results='asis', warning=FALSE, echo=FALSE}
+labels(pop)  <- c(RAF_Score = 'RAF Score', T2D_Flag = "Type 2 Diabetes", Hypertension_Flag = 'Hypertension', 
+                  Dep_Anx_Flag = 'Depression / Anxiety', COPD_Flag = 'COPD', CHF_Flag = 'CHF', RA_Flag = 'RA',
+                  ChronicPain_Flag = 'Chronic Pain')
+
+tab1 <- tableby(Population ~ RAF_Score, data = pop[Enroll_Flag == 1],
+                control = tableby.control(numeric.stats=c("Nmiss","medianq1q3","meansd","range"), 
+                                          numeric.simplify = TRUE, total=FALSE))
+# summary(tab1, text = TRUE)
+tab2 <- tableby(Population ~ T2D_Flag + Hypertension_Flag + Dep_Anx_Flag + COPD_Flag + CHF_Flag + RA_Flag +
+                  ChronicPain_Flag, cat.simplify = TRUE, total=FALSE, data = pop[Enroll_Flag == 1])
+# summary(tab2, text = TRUE)
+tab12 <- merge(tab2, tab1)
+# summary(tab12, text = TRUE)
+summary(tab12, pfootnote = FALSE, digits = 2)
+```
+
+```{r Enrolled health out, results='asis', warning=FALSE, echo=FALSE}
+tab1 <- tableby(Population ~ RAF_Score,
+                total = FALSE, data = pop[Enroll_Flag == 1],
+                control = tableby.control(numeric.stats=c("Nmiss", "n_outliers_999","medianq1q3_out_999","mean_out_999",
+                                                        "range_out_999"),
+                                        stats.labels=list(Mmiss = "N-miss", n_outliers_999 = 'N-outliers', 
+                                                          medianq1q3_out_999 = 'Median (Q1, Q3)', mean_out_999 = 'Mean (SD)',
+                                                          range_out_999 = 'Range')))
+# summary(tab1, text = TRUE)
+mypval <- data.frame(aovout_func_joy(pop, columns =c("RAF_Score"), strata = "Year_Mo_", pertle = 0.999))
+tab_out <- modpval.tableby(tab1, mypval, use.pname = TRUE)
+# summary(tab_out, text = TRUE)
+```
+
+
+```{r echo=FALSE}
+tab_out_tmp = as.data.frame(tab_out)
+tmp = tab_out_tmp %>% 
+  filter(variable %in% c("RAF_Score"), term %in% c("mean_out_999"))
+F1_mean = tmp$`July 2017`[[1]][1] 
+F2_mean = tmp$`July 2018`[[1]][1] 
+mean_diff = round(abs(F1_mean - F2_mean), 2)
+```
+
+```{r without extreme RAF enrolled, echo=FALSE}
+new_pop_raf_en <- new_pop_raf(pop, enroll_flag = "Y")
+# new_pop_raf[,.(Mean = mean(RAF_Score), SD = sd(RAF_Score)), keyby = Population]
+```
+
+```{r, echo=FALSE }
+effectsize_raf = cohen.d(new_pop_raf_en$RAF_Score, new_pop_raf_en$Population, hedges.correction = TRUE, na.rm = TRUE)
+effectsize_raf_mag = effectsize_raf$magnitude
+effectsize_raf_estimate = round(abs(effectsize_raf$estimate[[1]]), 3)
+```
+
+  * Prevalence of disease conditions do not differ between the two groups.  
+  * The RAF scores of enrolled members in July 2018 is `r mean_diff` higher than those enrolled in July 2017. The effect size is `r effectsize_raf_estimate`, a `r effectsize_raf_mag` estimate. 
+
+```{r echo= FALSE, results='asis'}
+summary(tab12, pfootnote = FALSE, digits = 2, title = "RAF score and percentage prevalence")
+```
+
+```{r echo= FALSE, results='asis'}
+summary(tab_out, pfootnote = FALSE, digits = 2, title = "RAF score (excluding 0.1% extreme normalized values)")
+```
+
+
+```{r echo= FALSE, results='asis'}
+conditions1 = data.table(create_chronic_tab_func(mm[Group1_Flag == 1 & Enroll_Flag == 1], year_mo_included = 1))
+conditions2 = data.table(create_chronic_tab_func(mm[Group2_Flag == 1 & Enroll_Flag == 1], year_mo_included = 2))
+cd1 = pop1[Enroll_Flag == 1,-c(31:37)]
+cd2 = pop2[Enroll_Flag == 1,-c(31:37)]
+setkeyv(conditions1, c("Indv_Sys_ID"))  ; setkeyv(conditions2, c("Indv_Sys_ID"))
+cd1 = cd1[conditions1, nomatch = 0]
+cd2 = cd2[conditions2, nomatch = 0]
+
+tmp_mm = rbind(cd1, cd2)
+
+tab_prev <- tableby(Population ~ T2D_Flag + Hypertension_Flag + Dep_Anx_Flag + COPD_Flag + CHF_Flag + RA_Flag +
+                  ChronicPain_Flag, data = tmp_mm,  total = FALSE, cat.simplify = TRUE)
+# summary(tab_prev, text = TRUE)
+```
+
+```{r echo=FALSE, results='asis'}
+# Cohen's h 
+tab_prev_tmp = as.data.frame(tab_prev)
+tmp = tab_prev_tmp %>% 
+  filter(variable %in% c("Hypertension_Flag", "Dep_Anx_Flag", "ChronicPain_Flag"))
+
+H1_prop = tmp$`July 2017`[[1]][2] /100
+H2_prop = tmp$`July 2018`[[1]][2] /100
+H_diff = round(abs(tmp$`July 2017`[[1]][2] -  tmp$`July 2018`[[1]][2]), 1)
+H_effect_size = abs(ES.h(H2_prop, H1_prop))
+
+DA1_prop = tmp$`July 2017`[[2]][2] /100
+DA2_prop = tmp$`July 2018`[[2]][2] /100
+DA_diff = round(abs(tmp$`July 2017`[[2]][2] -  tmp$`July 2018`[[2]][2]), 1)
+DA_effect_size = abs(ES.h(DA2_prop, DA1_prop))
+
+Cp1_prop = tmp$`July 2017`[[3]][2] /100
+Cp2_prop = tmp$`July 2018`[[3]][2] /100
+Cp_diff = round(abs(tmp$`July 2017`[[3]][2] -  tmp$`July 2018`[[3]][2]), 1)
+Cp_effect_size = abs(ES.h(Cp2_prop, Cp1_prop))
+# since all effect size are less than 0.2 then they are all negligible
+
+Eff.Size = data.table(Variable = c("Hypertension", "Depression / Anxiety","Chronic pain"),
+                      Estimate = c(H_effect_size, DA_effect_size, Cp_effect_size),
+                      Magnitude = rep("negligible", 3))
+```
+
+To examine the prevalence further, continuous UHC plan enrollment from January to July of the corresponding year was considered. The prevalence of hypertension, depression or anxiety, and chronic pain conditions are higher among those enrolled in July 2018 than those enrolled in July 2017 by `r H_diff`%, `r DA_diff`%, and `r Cp_diff`%, respectively. 
+
+```{r echo=FALSE, results='asis'}
+summary(tab_prev, pfootnote = TRUE, digits = 2, title = "Jan - July percentage prevalence")
+```
+
+
+```{r, echo=FALSE, results='asis'}
+kable(Eff.Size, caption = "Effect size of the difference", digits = 3) %>% 
+  kable_styling(full_width = FALSE, bootstrap_options = "condensed")
+```
+
+```{r enrolled RAF histogram, echo=FALSE, warning=FALSE, fig.height=3, fig.width=4}
+plot_out(pop, enroll_flag = "Y")
+```
+
+```{r, echo=FALSE, warning=FALSE, fig.height=3, fig.width=4, eval=FALSE}
+ggplot(pop[Enroll_Flag == 1], aes(x = RAF_Score, fill = Population)) + 
+  geom_histogram(bins = 30,aes(y = stat(width*density)),
+                 position="dodge") +  # same variance\
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  ggtitle("Among enrolled") + ylab("Percentage") + 
+  scale_fill_manual(values = c(uhg1, uhg2)) +
+  theme_joy + guides(fill = guide_legend(title = NULL))
+```
+
+```{r, echo=FALSE, include=FALSE, eval=FALSE}
+ggplot(pop[Enroll_Flag == 1], aes(x = log(RAF_Score + 10000))) + geom_density()
+ggplot(pop[Enroll_Flag == 1 & RAF_Score > 0], aes(x = log(RAF_Score), fill = Population)) + geom_density(alpha = .3)  
+ggplot(pop[Enroll_Flag == 1 & RAF_Score > 0], aes(x = RAF_Score, fill = Population)) + geom_density(alpha = .3)  
+# ggplot(pop, aes(x = RAF_Score, fill = Population)) + geom_density(alpha = .3)  # very far from normal distribution
+pop[Enroll_Flag == 1 & Population == 'Population 1',summary(RAF_Score)]
+pop[Enroll_Flag == 1 & Population == 'Population 2',summary(RAF_Score)]
+```
+
+
+### Claims
+
+```{r, results='asis', echo=FALSE}
+tab_orig <- tableby(Population ~ IP_Allw_Amt + OP_Allw_Amt + DR_Allw_Amt + Rx_Allw_Amt + ER_Allw_Amt + Total_Allw_Amt, 
+                test = TRUE,total=FALSE, data = pop[Enroll_Flag == 1])
+# summary(tab_orig, text = TRUE)
+```
+
+```{r, results='asis', echo=FALSE}
+labels(pop)  <- c(IP_Allw_Amt = 'IP', OP_Allw_Amt = "OP", DR_Allw_Amt = 'DR', Rx_Allw_Amt = 'Rx', ER_Allw_Amt = 'ER',
+                  Total_Allw_Amt = 'Total')
+# summary(tab1, text = TRUE)
+tab1 <- tableby(Population ~ IP_Allw_Amt + OP_Allw_Amt + DR_Allw_Amt + Rx_Allw_Amt + ER_Allw_Amt + Total_Allw_Amt,
+                total = FALSE, data=pop[Enroll_Flag == 1], 
+                control=tableby.control(numeric.stats=c("n_outliers","mean_out", "range_out"), 
+                                        stats.labels=list(n_outliers = 'N-outliers', mean_out = 'Mean (SD)', 
+                                                          range_out = 'Range')))
+mypval <- data.frame(aovout_func_joy(pop[Enroll_Flag == 1], columns =c("IP_Allw_Amt", "OP_Allw_Amt", "DR_Allw_Amt", "Rx_Allw_Amt",
+                                                 "ER_Allw_Amt","Total_Allw_Amt"), strata = "Year_Mo_", pertle = 0.995))
+tab2 <- modpval.tableby(tab1, mypval, use.pname = TRUE)
+# summary(tab2, text = TRUE)
+```
+
+Enrolled members in July 2018 had higher OP, DR, and total dollar spending than the July 2017 enrolled members, but the differences were negligible.
+
+```{r echo=FALSE, results='asis'}
+summary(tab_orig, pfootnote = FALSE, digits = 2, title = 'Comparison of healthcare $ spending')
+```
+
+
+```{r echo=FALSE, results='asis'}
+summary(tab2, pfootnote = FALSE, digits = 2, title = 'Comparison of healthcare $ spending (exluding 0.5% extreme values)')
+```
+
+```{r, echo=FALSE, results='asis'}
+Eff.Size = effectsize_func(pop[Enroll_Flag == 1], columns = c("OP_Allw_Amt", "DR_Allw_Amt", "Total_Allw_Amt"), strata = "Year_Mo_", 
+                           pertle = 0.995, remove_outlier = "Y")
+Eff.Size = Eff.Size[,.(Spend = c('OP', 'DR', 'Total'), Estimate, Magnitude)]
+
+kable(Eff.Size, caption = "Effect size of the difference", digits = 3) %>% 
+  kable_styling(full_width = FALSE, bootstrap_options = "condensed")
+
+```
+
+
+
+```{r Enrolled Count and Total Spend, echo=FALSE}
+new_pop_total <- wo_extreme_func(data = pop[Enroll_Flag == 1], columns = c( "Total_Allw_Amt"), strata = "Year_Mo_", pertle = 0.995)
+new_pop_total = data.table(new_pop_total[[1]])
+Spend = new_pop_total[, .(.N, 'Mean Total Spend' = mean(Total_Allw_Amt, na.rm = T),
+                          'SD Total Spend' = sd(Total_Allw_Amt, na.rm = T)), keyby = Year_Mo_]
+
+kable(Spend, caption = "Enrolled Count and Total Spend", digits = 1, format.args = list(big.mark = ',')) %>% 
+  kable_styling(full_width = FALSE, bootstrap_options = 'condensed')
+```
+
+```{r enroll spend by group and category, echo=FALSE}
+Spend_cat_melt = new_pop_spend(data = pop, enroll_flag = "Y")
+
+ggplot(Spend_cat_melt, aes(x=Category, y=Mean, fill=Category)) + 
+  geom_bar(position = position_dodge(), stat = "identity") +
+  geom_errorbar(aes(ymin=Lower, ymax=Upper),
+                width=.2,                    # Width of the error bars
+                position=position_dodge(.9)) +
+  scale_fill_manual(values = c(uhg1, uhg2, uhg3, uhg4, uhg5)) +
+  labs(x = '', y = 'Mean Spend $') +
+  ggtitle("Mean (CI) spend by category and population (excluding 0.5% extreme values)") +
+  theme_joy +
+  facet_grid(. ~ Year_Mo_)
+# Spend_cat = pop[Enroll_Flag == 1,.(.N, IP= mean(IP_Allw_Amt, na.rm = TRUE), OP = mean(OP_Allw_Amt, na.rm = TRUE), 
+#                               DR = mean(DR_Allw_Amt, na.rm = TRUE), Rx = mean(Rx_Allw_Amt, na.rm = TRUE), 
+#                               ER = mean(ER_Allw_Amt, na.rm = TRUE)), keyby = Year_Mo_]
+# setnames(Spend_cat, 'Year_Mo_', 'Year_Mo')
+# 
+# Spend_cat.melt = melt(Spend_cat, id.vars = c('Year_Mo'),
+#                       measure.vars = c('IP','OP','DR','Rx','ER'),
+#                       variable.name = "Category",
+#                       value.name = "Spend")
+# ggplot(Spend_cat.melt, aes(x = Category, y = Spend, fill = Category)) +
+#   geom_bar(stat = "identity",position = position_dodge()) + 
+#   scale_fill_manual(values = c('red', 'orange','green','blue','violet')) +
+#   labs(x = '', y = 'Mean Spend $') +
+#   ggtitle("Mean spend by category and population") +
+#   theme(legend.position = "none", plot.title = element_text(hjust = 0.5, face = 'bold'),text = element_text(size = 7),
+#         axis.text.x = element_text(size = 7), axis.text.y = element_text(size = 7)) +
+#   facet_grid(. ~ Year_Mo)
+```
+
+```{r, echo=FALSE, warning=FALSE, fig.height=8, fig.width=7, eval=FALSE}
+p1 <- ggplot(data = pop[Enroll_Flag == 1], aes(log(IP_Allw_Amt), fill = Population)) + 
+  geom_histogram(bins = 30,
+                 aes(y = stat(width*density))) +
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  ggtitle("IP") + ylab("Percentage") +
+  scale_fill_manual(values = c(uhg1, uhg2)) +
+  theme_joy + guides(fill = guide_legend(title = NULL))
+
+p2 <- ggplot(data = pop[Enroll_Flag == 1], aes(log(OP_Allw_Amt), fill = Population)) + 
+  geom_histogram(bins = 30,
+                 aes(y = stat(width*density))) +
+  # facet_wrap(~variable) +
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  ggtitle("OP") + ylab("Percentage") +
+  scale_fill_manual(values = c(uhg1, uhg2)) +
+  theme_joy + guides(fill = guide_legend(title = NULL))
+p3 <- ggplot(data = pop[Enroll_Flag == 1], aes(log(DR_Allw_Amt), fill = Population)) + 
+  geom_histogram(bins = 30,
+                 aes(y = stat(width*density))) +
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  ggtitle("DR") + ylab("Percentage") +
+  scale_fill_manual(values = c(uhg1, uhg2)) +
+  theme_joy + guides(fill = guide_legend(title = NULL))
+
+p4 <- ggplot(data = pop[Enroll_Flag == 1], aes(log(Rx_Allw_Amt), fill = Population)) + 
+  geom_histogram(bins = 30,
+                 aes(y = stat(width*density))) +
+  # facet_wrap(~variable) +
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  ggtitle("Rx") + ylab("Percentage") +
+  scale_fill_manual(values = c(uhg1, uhg2)) +
+  theme_joy + guides(fill = guide_legend(title = NULL))
+p5 <- ggplot(data = pop[Enroll_Flag == 1], aes(log(ER_Allw_Amt), fill = Population)) + 
+  geom_histogram(bins = 30,
+                 aes(y = stat(width*density))) +
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  ggtitle("ER") + ylab("Percentage") +
+  scale_fill_manual(values = c(uhg1, uhg2)) +
+  theme_joy + guides(fill = guide_legend(title = NULL))
+
+p6 <- ggplot(data = pop[Enroll_Flag == 1], aes(log(Total_Allw_Amt), fill = Population)) + 
+  geom_histogram(bins = 30,
+                 aes(y = stat(width*density))) +
+  # facet_wrap(~variable) +
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  ggtitle("Total") + ylab("Percentage") +
+  scale_fill_manual(values = c(uhg1, uhg2)) +
+  theme_joy + guides(fill = guide_legend(title = NULL))
+title1=textGrob("Distributons of log spending among enrolled members", gp=gpar(fontface="bold"))
+grid.arrange(p1, p2, p3, p4, p5, p6, nrow = 3, ncol = 2, top = title1)
+```
+
+```{r, echo=FALSE, eval=FALSE}
+mm[Enroll_Flag == 1 & Group1_Flag == 1 & Year_Mo <= 201707, .N, keyby = Year_Mo]
+mm[Enroll_Flag == 1 & Group1_Flag == 1 & Year_Mo <= 201707, .N, keyby=Year_Mo][,sum(N)]
+tmp = mm[Enroll_Flag == 1 & Group1_Flag == 1 & Year_Mo == 201707, .N, .(Indv_Sys_ID)][,.(Indv_Sys_ID)]
+mm[Enroll_Flag == 1 & Group1_Flag == 1 & Year_Mo <= 201707 & Indv_Sys_ID %in% tmp$Indv_Sys_ID, .N]
+
+
+mm[Enroll_Flag == 1 & Group1_Flag == 1 & Year_Mo <= 201707, .(.N), keyby = .(Indv_Sys_ID, Year_Mo)][,.N, keyby = Year_Mo]
+
+```
+
+```{r  PMPM enrolled, echo=FALSE}
+# Group 1
+tmp = mm[Enroll_Flag == 1 & Group1_Flag == 1 & Year_Mo == 201707, .N, .(Indv_Sys_ID)][,.(Indv_Sys_ID)]
+count1 = mm[Group1_Flag == 1 & Year_Mo <= 201707 & Enroll_Flag == 1 & Indv_Sys_ID %in% tmp$Indv_Sys_ID, .(Group = 'Population 1', .N), keyby = .(Indv_Sys_ID)][,.(Members =.N), keyby = Group]
+tot1 = mm[Group1_Flag == 1 & Year_Mo <= 201707 & Enroll_Flag == 1 & Indv_Sys_ID %in% tmp$Indv_Sys_ID,
+          .(.N, IP = sum(IP_Allw_Amt, na.rm = TRUE), OP = sum(OP_Allw_Amt, na.rm = TRUE), 
+                              DR = sum(DR_Allw_Amt, na.rm = TRUE), Rx = sum(Rx_Allw_Amt, na.rm = TRUE), 
+                              ER = sum(ER_Allw_Amt, na.rm = TRUE), Total = sum(Total_Allw_Amt, na.rm = TRUE))]
+PMPM1 = tot1[,.(Group = 'Population 1', Months = N, IP = IP/N, OP = OP/N, DR = DR/N, Rx = Rx/N, ER = ER/N, Total = Total/N)]
+# Group 2
+tmp = mm[Enroll_Flag == 1 & Group2_Flag == 1 & Year_Mo == 201807, .N, .(Indv_Sys_ID)][,.(Indv_Sys_ID)]
+count2 = mm[Group2_Flag == 1 & Year_Mo >= 201707 & Enroll_Flag == 1 & Indv_Sys_ID %in% tmp$Indv_Sys_ID, .(Group = 'Population 2', .N), keyby = .(Indv_Sys_ID)][,.(Members =.N), keyby = Group]
+tot2 = mm[Group2_Flag == 1 & Year_Mo >= 201707 & Enroll_Flag == 1 & Indv_Sys_ID %in% tmp$Indv_Sys_ID,.(.N, IP= sum(IP_Allw_Amt, na.rm = TRUE), OP = sum(OP_Allw_Amt, na.rm = TRUE), 
+                              DR = sum(DR_Allw_Amt, na.rm = TRUE), Rx = sum(Rx_Allw_Amt, na.rm = TRUE), 
+                              ER = sum(ER_Allw_Amt, na.rm = TRUE), Total = sum(Total_Allw_Amt, na.rm = TRUE))]
+PMPM2 = tot2[,.(Group = 'Population 2', Months = N, IP = IP/N, OP = OP/N, DR = DR/N, Rx = Rx/N, ER = ER/N, Total = Total/N)]
+PMPM = rbind(PMPM1, PMPM2)
+count = rbind(count1, count2)
+setkeyv(count, c("Group"))  ;  setkeyv(PMPM, c("Group"))
+PMPM = PMPM[count, nomatch = NA]
+kable(PMPM, caption = "PMPM $ spending for each population", digits = 1, format.args = list(big.mark = ',')) %>%
+  kable_styling(full_width = FALSE, bootstrap_options = 'condensed')
+```
+
+
+```{r,echo=FALSE}
+rm(list = ls()[!ls() %in% c('mm', 'pop')])
+# loading the data
+load(file = "nramal_motionGrant/g1.rda") 
+load(file = "nramal_motionGrant/g2.rda")
+source(file = "nramal_motionGrant/functions.R")
+```
+
+## Active {.tabset .tabset-pills}
+
+### Among Eligible
+```{r,echo=FALSE}
+Active_Rate_Table(Group1_dat, Group2_dat,filters = "eligible" ,
+                  Table.cap = "Active Rate of Current Month and Current Month Year Ago")
+```
+
+
+```{r,results='asis', echo=FALSE}
+a <- PMPM(Group1_dat, Group2_dat, filters = "eligible")
+b = PMPM_bootstrap(a$boot_data, R=1000)
+
+
+dat_1 <- Group1_dat %>%
+  filter(Year_mo_str=="July 2017") %>%
+  mutate_at(vars(31:37, 12), as.factor) %>%
+  mutate_at(vars(14:19, 9, 22), as.numeric) %>% 
+  filter(active_flag=="Active") %>% 
+  filter(eligible_flag=="eligible") 
+
+
+dat_2 <- Group2_dat %>%
+  filter(Year_mo_str=="July 2018") %>%
+  mutate_at(vars(31:37, 12), as.factor) %>%
+  mutate_at(vars(14:19, 9,22), as.numeric) %>% 
+  filter(active_flag=="Active") %>% 
+  filter(eligible_flag=="eligible")
+
+mem1 <- Group1_dat %>% 
+  filter(eligible_flag=='eligible') %>% 
+  filter(Year_mo_str=="July 2017") %>%
+  filter(UHC_Enr_Mos1==13) %>% 
+  select(Indv_Sys_ID)
+
+mem2 <- Group2_dat %>% 
+  filter(eligible_flag=='eligible') %>% 
+  filter(Year_mo_str=="July 2018") %>%
+  filter(UHC_Enr_Mos2==13) %>% 
+  select(Indv_Sys_ID) 
+cont1 = left_join(mem1, dat_1, by="Indv_Sys_ID")
+cont2 = left_join(mem2, dat_2, by="Indv_Sys_ID")
+
+cont_enrol = rbind(cont1, cont2)
+Active_dat <- rbind(dat_1, dat_2)
+
+## Another table for chronic conditions
+cd = dat_1[, -c(31:37)]
+cd1 = create_chronic_tab(Group1_dat,1)
+cd = left_join(cd, cd1 , by="Indv_Sys_ID")
+cd2 = dat_2[, -c(31:37)]
+cd1 = create_chronic_tab(Group2_dat,2)
+cd2 = left_join(cd2, cd1 , by="Indv_Sys_ID")
+cd_me = rbind(cd, cd2)
+
+amt_formula <- formula(paste("Year_mo_str ~", paste(names(Active_dat[14:19]), collapse = "+")))
+chron_formula <- formula(paste("Year_mo_str ~", paste(names(Active_dat[31:37]), collapse = "+"),  "+ RAF_Score"))
+chron_formula2 <- formula(paste("Year_mo_str ~", paste(names(Active_dat[31:37]), collapse = "+")))
+
+
+# Tabley tables
+demogs_tabs <- tableby(Year_mo_str ~ Age + Gdr_Cd + Sbscr_Ind + USR_Ind +  Med_Income, data = Active_dat, total=FALSE)
+medraf_tab <- tableby(Year_mo_str ~ RAF_Score, data = Active_dat, total=FALSE, 
+                      control = tableby.control(numeric.stats = c("n_outliers_999", "mean_out_999", "range_out_999"),
+                                                stats.labels = list(n_outliers_999="N-Outliers", 
+                                                      mean_out_999="Mean (SD)", range_out_999="Range")))
+medraf_pval = aovout_func(Active_dat, columns =  "RAF_Score", 
+                          strata = "Year_mo_str", pertle = 0.999) %>% data.frame()
+medraf_tab=modpval.tableby(medraf_tab,medraf_pval, use.pname = TRUE)
+
+expen_tab <- tableby(amt_formula, data = Active_dat, total=FALSE)
+expen_tab2 <- tableby(amt_formula, data = Active_dat, total=FALSE, 
+                      control = tableby.control(numeric.stats = c("n_outliers", "mean_out", "range_out"),
+                                                stats.labels = list(n_outliers="N-Outliers", 
+                                                                    mean_out="Mean (SD)", range_out="Range")))
+
+chron_tab <- tableby(chron_formula, data = Active_dat, total=FALSE, cat.simplify=TRUE)
+chron_tab2 <- tableby(chron_formula2, data = cd_me, total=FALSE, cat.simplify=TRUE)
+
+spend <- names(Active_dat[,14:19])
+p_val=aovout_func(Active_dat, columns = spend, strata = "Year_mo_str", pertle = 0.995) %>% data.frame()
+expen_tab2 = modpval.tableby(expen_tab2, p_val, use.pname = TRUE)
+
+demogs_labels = c(Age="Age", Gdr_Cd="Gender", USR_Ind="Area", Sbscr_Ind = "Subscriber", 
+                  Med_Income="Median Income",RAF_Score = "RAF Score" )
+
+amt_labels = list(IP_Allw_Amt= "IP", OP_Allw_Amt= "OP",DR_Allw_Amt="DR", Rx_Allw_Amt="RX", 
+                  ER_Allw_Amt= "ER",Total_Allw_Amt = "Total Allowed Amount")
+
+chron_labels = list(T2D_Flag = "Type 2 Diabetes", Hypertension_Flag="Hypertension", 
+                    Dep_Anx_Flag = "Depression and Anxiety", COPD_Flag = "COPD",
+                    CHF_Flag = "Congestive Heart Failure",
+                    RA_Flag = "Rheumatoid Athritis", ChronicPain_Flag = "Chronic Pain",RAF_Score = "RAF Score")
+```
+
+#### {.tabset .tabset-fade}
+##### Demographics
+
+<p>The demographics of the two populations (current month and current month year ago populations) are completely different (see Tables below). Compared to current month year ago population, current month active eligible members are one-year younger, more females are observed than males, more subscribers are active, the percentage active from Suburban and Urban increases, median income also increases. Although the difference of the two populations has been proven to be statistically significant, the effect size suggests that the differences are negligible (Effect Size Tables). </p>
+
+```{r, results='asis', echo=FALSE, fig.align='center', warning=FALSE}
+summary(demogs_tabs, labelTranslations = demogs_labels, 
+        title = "Demographics Profile Comparisons",   
+        digits=2, digits.p=2, digits.pct=1)
+
+cohens2 = COHEN_ME(Active_dat, factor = "Year_mo_str", columns =  c("Age","Med_Income"), remove_out = "N", labelTrans = demogs_labels)
+
+
+# effect size fo categorical variables
+
+GenderF = cohen.h(Active_dat,columns = "Gdr_Cd", factor = "Year_mo_str", tofactor = "F", labelTrans = demogs_labels)
+GenderM = cohen.h(Active_dat,columns = "Gdr_Cd", factor = "Year_mo_str", tofactor = "M", labelTrans = demogs_labels)
+subs = cohen.h(Active_dat,columns = "Sbscr_Ind", factor = "Year_mo_str", tofactor = "1", labelTrans = demogs_labels)
+AreaR = cohen.h(Active_dat,columns = "USR_Ind", factor = "Year_mo_str", tofactor = "R", labelTrans = demogs_labels)
+AreaS = cohen.h(Active_dat,columns = "USR_Ind", factor = "Year_mo_str", tofactor = "S", labelTrans = demogs_labels)
+AreaU = cohen.h(Active_dat,columns = "USR_Ind", factor = "Year_mo_str", tofactor = "U", labelTrans = demogs_labels)
+effects_data_cat = rbind(GenderF,GenderM,subs, AreaR, AreaS, AreaU)
+effects_data_cat = rbind(effects_data_cat, cohens2)
+
+kable(effects_data_cat, 
+      caption = "Effect Size Estimates of Demographics", align = "cc") %>%
+      kable_styling(bootstrap_options = c("striped", "hover"), full_width = F) %>% 
+      column_spec(1, width = "5cm") %>%
+      column_spec(2, width = "5cm") %>% 
+      column_spec(3, width = "5cm") %>% 
+      column_spec(4, width = "5cm")
+
+age_fig <-plot.a(Active_dat, xs=Active_dat$Age, binwidth = 2, fill = Active_dat$Year_mo_str, 
+        color = Active_dat$Year_mo_str, legend.position = "bottom",
+       title = "AGE",
+       ylab = "Percentage", xlab = "Age", legend.title = " ")
+med_fig <-plot.a(Active_dat, xs=Active_dat$Med_Income, binwidth = 10000, fill = Active_dat$Year_mo_str, 
+        color = Active_dat$Year_mo_str, legend.position = "bottom",
+       title = "MEDIAN HOUSHOLD INCOME",
+       ylab = "Percentage", xlab = "Median Household Income", legend.title = " ")
+grid.arrange(age_fig, med_fig, ncol=2)
+```
+
+##### Health
+<p>It seems that there is no difference between the two populations in term of conditions but theres is a difference in RAF score. RAF score declined from 1.22 of current month year ago to 1.06 in current month however, this difference is negligible according to cohen's D test. After removing some outliers in RAF scores, the result remains the same. In addition to the prevalence condition comparison, we suspected that conditions might be recorded from the previous months (Jan-Jul of either year)  since the members from the current month might never had any claims update. Once the member is flag in the months between January to July, he or she have that certain condition. In result, Hypertension, Depression and Anxiety, and Chronic Pain are the conditions that the two population differs. The percentage of active eligible members who have this conditions increased in the current month population however, its differences from current month year ago is negligible.</p>
+
+```{r, results='asis', echo=FALSE, warning=FALSE}
+summary(chron_tab, labelTranslations = chron_labels, 
+        title = "RAF Score and Percentage Prevalence Comparisons",   
+        digits=2, digits.p=2, digits.pct=1)
+summary(medraf_tab,labelTranslations = demogs_labels, 
+        title = "RAF Score Comparisons (excluding 0.1% extreme values)",
+        digits=2, digits.p=2, digits.pct=1)
+cohens1 = COHEN_ME(Active_dat, factor = "Year_mo_str", columns = "RAF_Score", 
+                   pertle = 0.999, labelTrans = demogs_labels, remove_out = "Y")
+kable(cohens1, 
+      caption = "Effect Size Estimate of RAF Score", align = "cc") %>%
+      kable_styling(bootstrap_options = c("striped", "hover"), full_width = F) %>% 
+      column_spec(1, width = "5cm") %>%
+      column_spec(2, width = "5cm") %>% 
+      column_spec(3, width = "5cm") %>% 
+      column_spec(4, width = "5cm") 
+summary(chron_tab2, labelTranslations = chron_labels, 
+        title = "Jan - July Percentage Prevalence Comparisons",
+        digits=2, digits.p=2, digits.pct=1)
+cohensH1 = cohen.h(cd_me,columns = c("Hypertension_Flag","Dep_Anx_Flag","ChronicPain_Flag" ), factor = "Year_mo_str", labelTrans = chron_labels)
+kable(cohensH1, 
+      caption = "Effect Size Estimate of Conditions", align = "cc") %>%
+      kable_styling(bootstrap_options = c("striped", "hover"), full_width = F) %>% 
+      column_spec(1, width = "5cm") %>%
+      column_spec(2, width = "5cm") %>% 
+      column_spec(3, width = "5cm") %>% 
+      column_spec(4, width = "5cm") 
+
+rafnoextrem = data_without_extreme(Group1_dat, Group2_dat,filter = "eligible",prob = 0.999, var = "RAF_Score")
+p1 <- plot.a(rafnoextrem, xs=rafnoextrem$RAF_Score, binwidth = 1, fill = rafnoextrem$Year_mo_str, 
+        color = rafnoextrem$Year_mo_str, legend.position = "bottom",
+       title = "RAF SCORE (excluding 0.1% of normalise extreme values)",
+       ylab = "Percentage", xlab = "RAF Score", legend.title = " ", alpha = 0.6)
+p1
+  
+```
+
+<p> For people who are continuously enrolled in UHC, there is no difference in RAF Score in the two populations </p>
+```{r, echo=FALSE, warning=FALSE, results='asis'}
+raf_tab <- tableby(Year_mo_str ~ RAF_Score, data = cont_enrol, total=FALSE, 
+                      control = tableby.control(numeric.stats = c("n_outliers_999", "mean_out_999", "range_out_999"),
+                                                stats.labels = list(n_outliers_999="N-Outliers", 
+                                                mean_out_999="Mean (SD)", range_out_999="Range")))
+raf_pval = aovout_func(cont_enrol, columns =  "RAF_Score", 
+                          strata = "Year_mo_str", pertle = 0.999) %>% data.frame()
+raf_tab=modpval.tableby(raf_tab,raf_pval, use.pname = TRUE)
+raf_tab2 <- tableby(Year_mo_str ~ RAF_Score, data = cont_enrol, total=FALSE)
+summary(raf_tab2, labelTranslations = chron_labels,
+        title ="RAF Score Comparisons Among Continuously Enrolled in UHC")
+summary(raf_tab, labelTranslations = chron_labels,
+        title ="RAF Score Comparisons Among Continuously Enrolled in UHC(excluding 0.1% extreme values)")
+```
+
+
+##### Claims
+<p>Active among eligible members from both population spent more on outpatient (OP), doctor visit(DR), and drugs (Rx) while they spent less on inpatient (IP) and emergency room (ER). Comparing the two populations, OP, DR, ER, and Total spendings show significant difference (after removing outlier) however, the differences are negligible. Per member per month (PMPM) spending was also reviewed. Base on bootstrap test, members in current month spend more compared to members in current month year ago (bootstrap table).</p>
+```{r, results='asis', echo=FALSE, fig.align='center'}
+summary(expen_tab, labelTranslations = amt_labels, 
+        title = "Claims Spending Comparison",  
+        digits=2, digits.p=2, digits.pct=1)
+summary(expen_tab2, labelTranslations = amt_labels, 
+        title = "Claims Spending Comparison(excluding 0.5% extreme values)",  
+        digits=2, digits.p=2, digits.pct=1)
+cohens_tab = COHEN_ME(Active_dat, factor = "Year_mo_str", columns = c("OP_Allw_Amt","DR_Allw_Amt","ER_Allw_Amt",
+                                                                      "Total_Allw_Amt"), pertle = 0.995,
+                      labelTrans = amt_labels)
+kable(cohens_tab, 
+      caption = "Effect Size Estimates of Claims Spending", align = "cc") %>%
+      kable_styling(bootstrap_options = c("striped", "hover"), full_width = F) %>% 
+      column_spec(1, width = "5cm") %>%
+      column_spec(2, width = "5cm") %>% 
+      column_spec(3, width = "5cm") %>% 
+      column_spec(4, width = "5cm")
+
+kable(a$PMPM_tab, 
+      caption = "Per Member Per Month Claims Spending", align = "cc") %>%
+      kable_styling(bootstrap_options = c("striped", "hover"), full_width = F) %>% 
+      column_spec(1, width = "6.5cm") %>%
+      column_spec(2, width = "4cm")
+
+kable(b, caption = "Bootstrap on the Difference in PMPM",
+      align = "cc") %>% 
+      kable_styling(bootstrap_options = c("striped", "hover"), full_width = F) %>% 
+      column_spec(1, width = "6.5cm") %>%
+      column_spec(2, width = "4cm")
+
+spend_table = data.frame()
+spend = names(Active_dat[14:18])
+for (i in 1:length(spend)){
+  noextrem = data_without_extreme(Group1_dat, Group2_dat,filter = "eligible",prob = 0.995, var = spend[i])
+  colnum = grep(spend[i], colnames(noextrem))
+  cnt = grep(spend[i], names(amt_labels))
+   
+  a1 = paste0("mean_ci(", spend[i], ")[[1]]")
+  a2 = paste0("mean_ci(", spend[i], ")[[2]]")
+  a3 = paste0("mean_ci(", spend[i], ")[[3]]")
+  noex = noextrem %>% 
+    select(Year_mo_str, spend[i]) %>% 
+    group_by(Year_mo_str) %>% 
+    summarise(Mean=eval(parse(text = a1)),Lower=eval(parse(text = a2)), Upper=eval(parse(text = a3)))
+  
+  spend[i]=amt_labels[[cnt]]
+  noex = noex %>% 
+    mutate(Category=spend[i]) %>% 
+    select(Year_mo_str, Category, everything()) %>% data.frame()
+  spend_table = rbind(spend_table, noex)
+}
+
+
+spend_table$Category <-   factor(spend_table$Category, levels = c("IP", "OP", "DR", "RX", "ER"))
+
+ggplot(spend_table, aes(x=Category, y=Mean,fill=Category))+
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_errorbar(aes(ymin=Lower, ymax=Upper), width = 0.2, position = position_dodge(0.9))+
+  facet_grid(.~Year_mo_str)+
+  guides(fill=FALSE)+
+  ggtitle("Mean Spend by Category") +
+  ylab("Mean Spend $") + xlab("")+
+  theme_joy
+
+```
+
+
+### Among Enrolled
+```{r,echo=FALSE}
+Active_Rate_Table(Group1_dat, Group2_dat,filters = "enrolled" ,
+                  Table.cap = "Active Rate of Current Month and Current Month Year Ago")
+```
+
+```{r,results='asis', echo=FALSE}
+c = PMPM(Group1_dat, Group2_dat,filters = "enrolled")
+d = PMPM_bootstrap(c$boot_data, R=1000)
+dat_3 <- Group1_dat %>%
+  filter(Year_mo_str=="July 2017") %>%
+  mutate_at(vars(31:37, 12), as.factor) %>%
+  mutate_at(vars(14:19, 9, 22), as.numeric) %>% 
+  filter(active_flag=="Active") %>% 
+  filter(enroll_flag=="enrolled")
+
+
+dat_4 <- Group2_dat %>%
+  filter(Year_mo_str=="July 2018") %>%
+  mutate_at(vars(31:37, 12), as.factor) %>%
+  mutate_at(vars(14:19, 9,22), as.numeric) %>% 
+  filter(active_flag=="Active") %>% 
+  filter(enroll_flag=="enrolled")
+mem1 <- Group1_dat %>% 
+  filter(enroll_flag=="enrolled") %>% 
+  filter(Year_mo_str=="July 2017") %>%
+  filter(UHC_Enr_Mos1==13) %>% 
+  select(Indv_Sys_ID)
+
+mem2 <- Group2_dat %>% 
+  filter(enroll_flag=="enrolled") %>% 
+  filter(Year_mo_str=="July 2018") %>%
+  filter(UHC_Enr_Mos2==13) %>% 
+  select(Indv_Sys_ID) 
+cont1 = left_join(mem1, dat_3, by="Indv_Sys_ID")
+cont2 = left_join(mem2, dat_4, by="Indv_Sys_ID")
+
+cont_enrol = rbind(cont1, cont2)
+Active_dat1 <- rbind(dat_3, dat_4)
+
+
+## Another table for chronic conditions
+cd = dat_3[, -c(31:37)]
+cd1 = create_chronic_tab(Group1_dat,1)
+cd = left_join(cd, cd1 , by="Indv_Sys_ID")
+
+cd2 = dat_4[, -c(31:37)]
+cd1 = create_chronic_tab(Group2_dat,2)
+cd2 = left_join(cd2, cd1 , by="Indv_Sys_ID")
+
+cd_me = rbind(cd, cd2)
+
+amt_formula <- formula(paste("Year_mo_str ~", paste(names(Active_dat1[14:19]), collapse = "+")))
+chron_formula <- formula(paste("Year_mo_str ~", paste(names(Active_dat1[31:37]), collapse = "+"), "+ RAF_Score"))
+chron_formula2 <- formula(paste("Year_mo_str ~", paste(names(Active_dat1[31:37]), collapse = "+")))
+
+# Tabley tables
+demogs_tabs <- tableby(Year_mo_str ~ Age + Gdr_Cd + Sbscr_Ind + USR_Ind +  Med_Income, data = Active_dat1, total=FALSE)
+medraf_tab <- tableby(Year_mo_str ~  RAF_Score, data = Active_dat1, total=FALSE, 
+                      control = tableby.control(numeric.stats = c("n_outliers_999", "mean_out_999", "range_out_999"),
+                                                stats.labels = list(n_outliers_999="N-Outliers", 
+                                                              mean_out_999="Mean (SD)", range_out_999="Range")))
+medraf_pval = aovout_func(Active_dat1, columns ="RAF_Score", 
+                          strata = "Year_mo_str", pertle = 0.999) %>% data.frame()
+medraf_tab=modpval.tableby(medraf_tab,medraf_pval, use.pname = TRUE)
+
+expen_tab <- tableby(amt_formula, data = Active_dat1, total=FALSE)
+expen_tab2 <- tableby(amt_formula, data = Active_dat1, total=FALSE, 
+                      control = tableby.control(numeric.stats = c("n_outliers", "mean_out", "range_out"),
+                                                stats.labels = list(n_outliers="N-Outliers", 
+                                                                    mean_out="Mean (SD)", range_out="Range")))
+
+chron_tab <- tableby(chron_formula, data = Active_dat1, total=FALSE, cat.simplify=TRUE)
+chron_tab2 <- tableby(chron_formula2, data = cd_me, total=FALSE, cat.simplify=TRUE)
+
+spend <- names(Active_dat1[,14:19])
+p_val=aovout_func(Active_dat1, columns = spend, strata = "Year_mo_str", pertle = 0.995) %>% data.frame()
+expen_tab2 = modpval.tableby(expen_tab2, p_val, use.pname = TRUE)
+```
+
+#### {.tabset .tabset-fade}
+##### Demographics
+<p>There is also differences in the demographics between the two populations for members who are enrolled and active however, the diffrences are negligible base in cohen's D and cohen's H tests.</p>
+
+```{r, results='asis', echo=FALSE, fig.align='center', warning=FALSE}
+summary(demogs_tabs, labelTranslations = demogs_labels, 
+        title = "Demographics profile of those who were enrolled and active for Key Accounts Motion Program",  
+        digits=2, digits.p=2, digits.pct=1)
+cohens2 = COHEN_ME(Active_dat1, factor = "Year_mo_str", columns =  c("Age","Med_Income"), remove_out = "N", labelTrans = demogs_labels)
+
+
+# effect size fo categorical variables
+
+GenderF = cohen.h(Active_dat1,columns = "Gdr_Cd", factor = "Year_mo_str", tofactor = "F", labelTrans = demogs_labels)
+GenderM = cohen.h(Active_dat1,columns = "Gdr_Cd", factor = "Year_mo_str", tofactor = "M", labelTrans = demogs_labels)
+subs = cohen.h(Active_dat1,columns = "Sbscr_Ind", factor = "Year_mo_str", tofactor = "1", labelTrans = demogs_labels)
+AreaR = cohen.h(Active_dat1,columns = "USR_Ind", factor = "Year_mo_str", tofactor = "R", labelTrans = demogs_labels)
+AreaS = cohen.h(Active_dat1,columns = "USR_Ind", factor = "Year_mo_str", tofactor = "S", labelTrans = demogs_labels)
+AreaU = cohen.h(Active_dat1,columns = "USR_Ind", factor = "Year_mo_str", tofactor = "U", labelTrans = demogs_labels)
+effects_data_cat = rbind(GenderF,GenderM, subs,AreaR, AreaS, AreaU)
+effects_data_cat = rbind(effects_data_cat, cohens2)
+kable(effects_data_cat, 
+      caption = "Effect Size Estimates Demographics", align = "cc") %>%
+      kable_styling(bootstrap_options = c("striped", "hover"), full_width = F) %>% 
+      column_spec(1, width = "5cm") %>%
+      column_spec(2, width = "5cm") %>% 
+      column_spec(3, width = "5cm") %>% 
+      column_spec(4, width = "5cm") 
+age_fig <-plot.a(Active_dat1, xs=Active_dat1$Age, binwidth = 2, fill = Active_dat1$Year_mo_str, 
+        color = Active_dat1$Year_mo_str, legend.position = "bottom",
+       title = "AGE",
+       ylab = "Percentage", xlab = "Age")
+med_fig <-plot.a(Active_dat1, xs=Active_dat1$Med_Income, binwidth = 10000, fill = Active_dat1$Year_mo_str, 
+        color = Active_dat1$Year_mo_str, legend.position = "bottom",
+       title = "MEDIAN HOUSEHOLD INCOME",
+       ylab = "Percentage", xlab = "Median Household Income")
+
+grid.arrange(age_fig, med_fig, ncol=2)
+```
+
+##### Health
+<p>Conditions Hypertension, Depression and Anxiety, and Chronic Pain are different in both populations however the difference is negligible. RAF score is also different among the populations. RAF score for members in July 2018 is smaller than RAF score in July 2017.</p>
+```{r, results='asis', echo=FALSE, , warning=FALSE}
+summary(chron_tab, labelTranslations = chron_labels, 
+        title = "RAF Score and Percentage Prevalence Comparisons",  
+        digits=2, digits.p=2, digits.pct=1)
+summary(medraf_tab,labelTranslations = demogs_labels, 
+        title = "RAF Score Comparison (excluding 0.1% extreme values)" ,
+        digits=2, digits.p=2, digits.pct=1)
+cohens1 = COHEN_ME(Active_dat1, factor = "Year_mo_str", columns = "RAF_Score", 
+                   pertle = 0.999, labelTrans = demogs_labels)
+kable(cohens1, 
+      caption = "Effect Size Estimate of RAF Score", align = "cc") %>%
+      kable_styling(bootstrap_options = c("striped", "hover"), full_width = F) %>% 
+      column_spec(1, width = "5cm") %>%
+      column_spec(2, width = "5cm") %>% 
+      column_spec(3, width = "5cm") %>% 
+      column_spec(4, width = "5cm") 
+summary(chron_tab2, labelTranslations = chron_labels, 
+        title = "Jan-Jul Percentage Prevalence Comparisons",  
+        digits=2, digits.p=2, digits.pct=1)
+
+
+cohensH1 = cohen.h(cd_me,columns = c("Hypertension_Flag","Dep_Anx_Flag","ChronicPain_Flag" ), factor = "Year_mo_str", labelTrans = chron_labels)
+kable(cohensH1, 
+      caption = "Effect Size Estimates of Conditions", align = "cc") %>%
+      kable_styling(bootstrap_options = c("striped", "hover"), full_width = F) %>% 
+      column_spec(1, width = "5cm") %>%
+      column_spec(2, width = "5cm") %>% 
+      column_spec(3, width = "5cm") %>% 
+      column_spec(4, width = "5cm") 
+
+rafnoextrem = data_without_extreme(Group1_dat, Group2_dat,filter = "enrolled",prob = 0.999, var = "RAF_Score")
+p1 <- plot.a(rafnoextrem, xs=rafnoextrem$RAF_Score, binwidth = 1, fill = rafnoextrem$Year_mo_str, 
+        color = rafnoextrem$Year_mo_str, legend.position = "bottom",
+       title = "RAF SCORE (excluding 0.1% extreme normalise values)",
+       ylab = "Percentage", xlab = "RAF Score", legend.title = " ", alpha = 0.6)
+p1
+```
+
+<p> For people who are continuously enrolled in UHC, there is no difference in RAF Score in the two populations </p>
+```{r, echo=FALSE, warning=FALSE, results='asis'}
+raf_tab <- tableby(Year_mo_str ~ RAF_Score, data = cont_enrol, total=FALSE, 
+                      control = tableby.control(numeric.stats = c("n_outliers_999", "mean_out_999", "range_out_999"),
+                                                stats.labels = list(n_outliers_999="N-Outliers", 
+                                                mean_out_999="Mean (SD)", range_out_999="Range")))
+raf_pval = aovout_func(cont_enrol, columns =  "RAF_Score", 
+                          strata = "Year_mo_str", pertle = 0.999) %>% data.frame()
+raf_tab=modpval.tableby(raf_tab,raf_pval, use.pname = TRUE)
+raf_tab2 <- tableby(Year_mo_str ~ RAF_Score, data = cont_enrol, total=FALSE)
+summary(raf_tab2, labelTranslations = chron_labels,
+        title ="RAF Score Comparisons Among Continuously Enrolled in UHC")
+summary(raf_tab, labelTranslations = chron_labels,
+        title ="RAF Score Comparisons Among Continuously Enrolled in UHC(excluding 0.1% extreme values)")
+```
+
+
+##### Claims
+<p>Among active enrolled members, OP, DR, and RX are the highest spending in the two pupulations. However,OP, DR, and ER are the spending that found to be different in both population but the differences can be negligible. Also, the total allowed is different but negligible. In PMPM, members in the current month have higher spending compared to members from the current month year ago.</p>
+```{r, results='asis', echo=FALSE, fig.align='center'}
+summary(expen_tab, labelTranslations = amt_labels, 
+        title = "Claims Spending Comparison",  
+        digits=2, digits.p=2, digits.pct=1)
+summary(expen_tab2, labelTranslations = amt_labels, 
+        title = "Claims Spending Comparison (excluding 0.5% extreme values)",  
+        digits=2, digits.p=2, digits.pct=1)
+cohens_tab = COHEN_ME(Active_dat1, factor = "Year_mo_str", columns = c("OP_Allw_Amt","DR_Allw_Amt","ER_Allw_Amt",
+                                                                      "Total_Allw_Amt"), pertle = 0.995, 
+                      labelTrans = amt_labels)
+kable(cohens_tab, 
+      caption = "Effect Size Estimates of Claims Spending", align = "cc") %>%
+      kable_styling(bootstrap_options = c("striped", "hover"), full_width = F) %>% 
+      column_spec(1, width = "5cm") %>%
+      column_spec(2, width = "5cm") %>% 
+      column_spec(3, width = "5cm") %>% 
+      column_spec(4, width = "5cm") 
+
+
+kable(c$PMPM_tab, 
+      caption = "Per Member Per Month Claims Spending", align = "cc") %>%
+      kable_styling(bootstrap_options = c("striped", "hover"), full_width = F) %>% 
+      column_spec(1, width = "6.5cm") %>%
+      column_spec(2, width = "4cm")
+
+kable(d, caption = "Bootstrap on the Difference in PMPM",
+      align = "cc") %>% 
+      kable_styling(bootstrap_options = c("striped", "hover"), full_width = F) %>% 
+      column_spec(1, width = "6.5cm") %>%
+      column_spec(2, width = "4cm")
+
+spend_table = data.frame()
+spend = names(Active_dat1[14:18])
+for (i in 1:length(spend)){
+  noextrem = data_without_extreme(Group1_dat, Group2_dat,filter = "enrolled",prob = 0.995, var = spend[i])
+  colnum = grep(spend[i], colnames(noextrem))
+  cnt = grep(spend[i], names(amt_labels))
+  a1 = paste0("mean_ci(", spend[i], ")[[1]]")
+  a2 = paste0("mean_ci(", spend[i], ")[[2]]")
+  a3 = paste0("mean_ci(", spend[i], ")[[3]]")
+  noex = noextrem %>% 
+    select(Year_mo_str, spend[i]) %>% 
+    group_by(Year_mo_str) %>% 
+    summarise(Mean=eval(parse(text = a1)),Lower=eval(parse(text = a2)), Upper=eval(parse(text = a3)))
+  
+  spend[i]=amt_labels[[cnt]]
+  noex = noex %>% 
+    mutate(Category=spend[i]) %>% 
+    select(Year_mo_str, Category, everything()) %>% data.frame()
+  spend_table = rbind(spend_table, noex)
+}
+
+
+spend_table$Category <-   factor(spend_table$Category, levels = c("IP", "OP", "DR", "RX", "ER"))
+
+ggplot(spend_table, aes(x=Category, y=Mean,fill=Category))+
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_errorbar(aes(ymin=Lower, ymax=Upper), width = 0.2, position = position_dodge(0.9))+
+  facet_grid(.~Year_mo_str)+
+  guides(fill=FALSE)+
+  ggtitle("Mean Spend by Category") +
+  ylab("Mean Spend $") + xlab("")+
+  theme_joy
+
+```
+
+
+
+
+# Discussion
+
+This research compared the member characteristics between those that were eligible in July 2017 and in July 2018. Eligible members in July 2018 have more females, a year younger, have higher RAF scores, have 6% higher in DR spending and more are located in suburban areas and less in rural areas than those eligible members in July 2017.
+
+The member characteristics between those that were enrolled in July 2017 and in July 2018 were also compared. Enrolled members in July 2018 have more females, a quarter year younger, have higher RAF scores, have 13% higher in DR spending and more are located in suburban areas and less in rural areas than those enrolled members in July 2017.
+
+Others to follow.
+
+
+# Appendix
+
+```{r}
+# Number of individuals enrolled in UHC per Group and year month
+mm[Group1_Flag == 1 , .N, .(Indv_Sys_ID, Year_Mo)][,.N, keyby = Year_Mo][Year_Mo <= 201707]
+
+mm[Group2_Flag == 1 , .N, .(Indv_Sys_ID, Year_Mo)][,.N, keyby = Year_Mo][Year_Mo >= 201707]
+# count_mm = 
+# ggplot(mm[Group1_Flag == 1], aes(x = as.Date(Year_Mo_))) +
+#   geom_line(aes)
+
+```

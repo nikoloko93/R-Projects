@@ -1,0 +1,443 @@
+---
+title: "OptiNose Populations Comparison"
+author: "Nikko Joe Ramal"
+date: "4/1/2019"
+output: 
+  html_document:
+    fig_height: 4
+    fig_width: 8.5
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,tidy = TRUE)
+library(formatR)
+library(tidyverse)
+library(varhandle)
+library(scales)
+library(gridExtra)
+library(grid)
+library(kableExtra)
+
+source("UHG_Palette.R")
+
+# Automatic table numbering
+tab_number <<- 0
+numtib = function(table.cap = NULL) {
+    count = 1
+    tab_number <<- tab_number + count
+    caption = paste0("Table ", tab_number, ".  ", table.cap)
+    return(caption)
+}
+
+# Automatic figure numbering
+fig_number <<- 0
+numfig = function(table.cap = NULL) {
+    count = 1
+    fig_number <<- fig_number + count
+    caption = paste0("Figure ", fig_number, ".  ", table.cap)
+    return(caption)
+}
+
+themenikko <- theme(axis.text.x = element_text(size = 9.7, face = "bold"),
+      # axis.text.y = element_blank(),
+      plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+      panel.grid = element_blank(),
+      axis.ticks = element_blank(),
+      legend.position = "bottom")
+```
+
+<style type="text/css">
+  caption {
+    color: #303030;
+    font-size: 1.1em;
+    font-weight: bold;
+    text-align: left;
+  }
+  table{
+    border: 0.75px solid #303030;
+    font-size: 14px;
+  }
+  th {
+  text-align:center;
+  background-color: #d7def2;
+  }
+
+  p{
+  font-family: Arial;
+  line-height:1.5em;
+  text-align: justify;
+  }
+</style>
+
+### __Introduction__
+
+<p>UnitedHealth Group Research and Development (UHG R&D) is exploring mechanisms for tailoring therapy and benefit coverage for patients who meet a specifically optimized criterion. In a small proof-of-concept, we tested members' response to an invitation to use Xhance, an Optinose-manufactured medication / dispenser which is indicated for use by persons suffering sinus-related problems such as chronic rhinosinusitis (CRS).  </p>
+
+<p>More specifically, we invited approximately 6,850 members from the Health plan of Nevada (HPN) who are also cared for by providers at Southwest Medical Associates (SMA), and diagnosed with sinus-related problems, to talk to their provider about the Xhance.</p>
+
+### __Populations__
+
+<p>These members were recruited by mail. The mail included an invitation to talk to their physician about Xhance. A separate mailing was sent to all invited members requesting that they complete a survey (SNOT22) to assess the severity of sinus-related conditions.  We attempted to contact, by phone, each person who returned a SNOT22 to extend a second invitation. Lastly, we attempted to contact all members to ask about their satisfaction with UnitedHealth Care using the Net Promoter Score (NPS) question.</p>
+
+<p>We intend to conduct a second round of NPS inquiry and SNOT22 surveys. Before these efforts  happen, we want to know the characteristics of the members who have been part of the recruitment process. Specifically, we want to know the differences that exist between the population of those __invited__ and</p>
+*	Those who __responded to the first SNOT22 survey__
+* Those who __responded to the survey__ and for whom we had __telephone numbers__
+*	Those who, when contacted by phone, __expressed interest__ in Xhance
+*	Those who had a __prescription written__ for the Xhance product
+
+### __Data__
+
+<p> The data consist of different groups. __Invited__ are those people who received a mailed invitation. Members who answered the survey are called __responded to the first SNOT22__.[^1] Those members who answered the survey and provided a contact number are called __responded to the first SNOT22 with numbers__. Among those who answered the survey and who were reached by phone, some expressed interest in meeting with their physician to learn about the therapy; they are the __expressed interest__ group. Finally, some members sought for and obtained a prescription from their provider and mailed it for processing. These are reffered to as __prescription written__. </p>
+
+<p>The data contains information on the demographics and healthcare utilization of the members who were recruited in 2017.  The demographic information includes gender, age, line of business (Commercial, Medicare, or Medicaid), subscriber status, and conditions related to sinus problems. The healthcare utilization data includes inpatient visits, days spent in inpatient facilities, allowed amounts associated with inpatient visits, outpatient visits, visits attributed to CRS, ambulatory surgical center visits, urgent care visits, and emergency room visits. Since this data came from SMA members and SMA operates on a capitated basis, costs for  services are not provided except for IP visits.</p>
+
+[^1]: We received 1,175 survey responses, but many respondents declined to provide their names when they mailed the surveys back. The results shown here are only for the 922 individuals we were able to identify.
+
+```{r, DataPullup, echo=FALSE}
+
+CRA_Members <- read.table("CRA_Members.txt", header = TRUE, sep = "|", dec = ".")
+CRS_Util <- read.table("CRS_Utilization.txt", header = TRUE, sep = "|", dec = ".")
+respondedSurv <- read.csv("RespondedSurvey.csv")
+colnames(respondedSurv)[1] <- "Generated_ID"
+
+CRA_Members <- CRA_Members %>% 
+  mutate(Subscriber = ifelse(Relation=="M", "Subscriber", "Dependent"))
+CRA_Members$Subscriber = factor(CRA_Members$Subscriber)
+
+CRA_Members$BusinessLine <- unfactor(CRA_Members$BusinessLine )
+CRA_Members <- CRA_Members %>% 
+  mutate(Insurance = ifelse(!BusinessLine %in% c("COMMERCIAL", "MEDICAID", "MEDICARE"),
+                            "OTHERS",BusinessLine))
+CRA_Members$Insurance <- factor(CRA_Members$Insurance)
+
+CRA_Members$Gender <- unfactor(CRA_Members$Gender)
+CRA_Members$Gender <- str_squish(CRA_Members$Gender) # remove whitespace
+CRA_Members$Gender <- factor(CRA_Members$Gender, levels = c("M","F"))
+```
+
+```{r, Naming Groups, echo=FALSE, include=FALSE}
+invited <- CRA_Members %>% 
+  mutate(Group = "Invited")
+
+respondedSurv <- left_join(respondedSurv, CRA_Members, by = "Generated_ID") %>% 
+  mutate(Group = "Responded")
+
+responded <- CRA_Members %>% 
+  filter(Responded_Snot22 == 1) %>% 
+  mutate(Group = "Responded + Contact Info")
+
+expinterest <- CRA_Members %>% 
+  filter(ExpressedInterest == 1) %>% 
+  mutate(Group = "Expressed Interest")
+
+sentRx <- CRA_Members %>% 
+  filter(SentPrescription == 1) %>% 
+  mutate(Group = "Received Prescription")
+
+# sum(invited$Responded_Snot22) #856 members
+# sum(responded$ExpressedInterest) #78 members
+# sum(expinterest$SentPrescription) #26 members
+
+combGrp <- rbind(invited, respondedSurv)
+combGrp <- rbind(combGrp, responded)
+combGrp <- rbind(combGrp, expinterest)
+combGrp <- rbind(combGrp, sentRx)
+combGrp$Group <- factor(combGrp$Group, 
+                     levels = c("Invited", "Responded", 
+                                "Responded + Contact Info","Expressed Interest",
+                                "Received Prescription"))
+```
+
+
+
+### __Results__ 
+#### __Demographics__
+
+##### __Gender Proportions__
+<p>The proportion of females is similar for the four groups except for the group who received a prescription (Figure 1). </p>
+
+```{r, Comparisons of Gender, echo=FALSE,  fig.height=3.5, fig.align="center"}
+# Comparisons of Gender
+
+count <- combGrp %>%
+    group_by(Group) %>%
+    summarise(GroupCount = n())
+
+GenderProp <- combGrp %>%
+  group_by(Group, Gender) %>% 
+  summarise(GenderCount = n()) %>% 
+  left_join(count, by = "Group") %>% 
+  filter(Gender == "F") %>% 
+  mutate(Proportion = GenderCount/GroupCount, Grp = paste0(Group,"\n (N=", GroupCount, ")"))
+
+GenderProp$Grp <- factor(GenderProp$Grp, levels = c("Invited\n (N=6854)","Responded\n (N=922)", "Responded + Contact Info\n (N=856)", "Expressed Interest\n (N=78)", "Received Prescription\n (N=28)" ))
+
+GdrCompPlot <- GenderProp %>% 
+  ggplot(aes(x = Grp, y = Proportion, fill = Grp)) +
+    geom_bar(stat = "identity" , position = "dodge", width = 0.5) +
+    guides(fill = F) +
+    theme(axis.text.x = element_text(size = 9.7, face = "bold"),
+          plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+          panel.grid = element_blank(),
+          axis.title = element_blank(),
+          axis.ticks = element_blank(),
+          legend.position = "bottom") +
+    scale_y_continuous(labels = percent_format(), limits = c(0,1))
+
+grid.arrange(GdrCompPlot, bottom =  textGrob(numfig("Proportion of Females"),
+                                             gp = gpar(fontsize = 14, font = 2)), nrow = 1)
+
+```
+
+<P style="page-break-before: always">
+##### __Age Distribution__
+<p>The Invited group is composed of younger members compared to the other groups. The average age for the Invited group is 49 which is 10-12 years younger than the other groups (Figure 2).  </p>
+
+```{r, Age Comparison, echo = FALSE,  fig.height = 3.5, fig.align = "center"}
+
+lab <- c("Invited\n (N=6854)","Responded\n (N=922)", "Responded + Contact Info\n (N=856)", 
+         "Expressed Interest\n (N=78)", "Received Prescription\n (N=28)")
+
+AgeCompPlot <- combGrp %>% 
+  ggplot(aes(x = Group, y = Age, fill = Group)) + 
+  geom_violin(draw_quantiles = 0.5, trim = F) + 
+  scale_x_discrete(labels = lab) + guides(fill = F) + themenikko + ylab("") + xlab("")
+
+grid.arrange(AgeCompPlot, nrow = 1, bottom =  textGrob(numfig("Age Distribution"),
+                                                      gp = gpar(fontsize = 14, font = 2)))
+```
+<br>
+
+##### __Line of Business__
+<p>In keeping with the difference in age among those who responded to the survey, the proportion of members with Medicare insurance in the Invited group is lower than in the other groups (Figure 3).  </p>
+
+```{r, Line of Business Comparison, echo = FALSE,  fig.height = 3.5, fig.align = "center"}
+
+LoBProp <- combGrp %>%
+  group_by(Group, Insurance) %>% 
+  summarise(LoBCount = n()) %>% 
+  left_join(count, by = "Group") %>% 
+  filter(Insurance != "OTHERS") %>% 
+  mutate(Proportion = LoBCount/GroupCount, Grp = paste0(Group,"\n (N=", GroupCount, ")"))
+
+LoBProp$Grp <- factor(LoBProp$Grp, levels = c("Invited\n (N=6854)","Responded\n (N=922)",
+                                              "Responded + Contact Info\n (N=856)", 
+                                              "Expressed Interest\n (N=78)",
+                                              "Received Prescription\n (N=28)"))
+
+LobCompPlot <- LoBProp %>% 
+  ggplot(aes(x = Grp, y = Proportion, fill = Insurance)) +
+    geom_bar(stat = "identity" , position = "dodge", width = 0.5) +
+    guides(fill = guide_legend(title = "")) +
+    theme(axis.text.x = element_text(size = 9.7, face = "bold"),
+          plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+          panel.grid = element_blank(),
+          axis.title = element_blank(),
+          axis.ticks = element_blank(),
+          legend.position = "bottom") +
+    scale_y_continuous(labels = percent_format(), limits = c(0,1))
+
+grid.arrange(LobCompPlot, bottom = textGrob(numfig("Line of Business"), 
+                                            gp = gpar(fontsize = 14, font = 2)), nrow = 1)
+```
+<P style="page-break-before: always">
+##### __Subscriber Type__
+<p>As shown in Figure 4, most of the members in all of the groups are subscribers, not dependents. </p>
+
+```{r, Subscriber Comparison, echo = FALSE,  fig.height = 3.5, fig.align = "center"}
+
+SubsProp <- combGrp %>%
+  group_by(Group, Subscriber) %>% 
+  summarise(SubscriberCount = n()) %>% 
+  left_join(count, by = "Group") %>% 
+  filter(Subscriber == "Subscriber") %>% 
+  mutate(Proportion = SubscriberCount/GroupCount, Grp = paste0(Group,"\n (N=", GroupCount, ")"))
+
+SubsProp$Grp <- factor(SubsProp$Grp, 
+                       levels = c("Invited\n (N=6854)", "Responded\n (N=922)",
+                                  "Responded + Contact Info\n (N=856)", "Expressed Interest\n (N=78)",
+                                  "Received Prescription\n (N=28)"))
+
+SubsCompPlot <- SubsProp %>% 
+  ggplot(aes(x = Grp, y = Proportion, fill = Grp)) +
+    geom_bar(stat = "identity", position = "dodge", width = 0.5) +
+    guides(fill = F) +
+    theme(axis.text.x = element_text(size = 9.7, face = "bold"),
+          plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),
+          panel.grid = element_blank(),
+          axis.title = element_blank(),
+          axis.ticks = element_blank(),
+          legend.position = "bottom") +
+    scale_y_continuous(labels = percent_format(), limits = c(0,1))
+
+grid.arrange(SubsCompPlot, bottom =  textGrob(numfig("Proportion of Subscribers"),
+                                              gp = gpar(fontsize = 14, font = 2)), nrow = 1)
+
+```
+
+<br>
+
+
+##### __Sinus-Related Conditions__
+<p>The most prevalent sinus-related conditions in all groups are CRS and acute sinusitis (Table 1). Nasal polyps is rare or absent in all of the groups.</p>
+
+```{r, Sinus Related Condition Comparison, results='asis', echo=FALSE, warning=FALSE}
+
+SinusConTbl <- combGrp %>% 
+  gather(key = "Conditions", value = "Flag", 10:15) %>% 
+  group_by(Conditions, Group) %>% 
+  summarise(pct = paste0(round((sum(Flag)/n())*100, 1), "%")) %>% 
+  spread(key = Group, value = pct) %>% 
+  filter(Conditions != "Sinus_Dx_Flag") %>% data.frame()
+
+rownames(SinusConTbl)[1:5] = c("Acute Sinusitis", "Chronic Rhinosinusitis", "Nasal Polyps",
+                      "Rhinitis", "Sinus Surgery")
+
+SinusConTbl[-1] %>% 
+  kable(format.args = list(big.mark = ","),
+        col.names = c("Invited (N=6854)","Responded (N=922)",
+                      "Responded + Contact Info (N=856)", "Expressed Interest (N=78)", 
+                      "Received Prescription (N=28)"),
+        caption = numtib("Percentage Prevalence"), align = 'cccc') %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = F)
+```
+
+
+```{r, Util Data, echo = FALSE}
+
+combGrpUtil <- combGrp %>% 
+  select(-c(4:7, 9)) %>% 
+  left_join(CRS_Util, by = "Generated_ID") %>% 
+  filter(MM_2017 != 0)
+```
+
+<P style="page-break-before: always">
+#### __Health Care Utilization__
+
+##### __Inpatient Stays__
+<p>As shown in  Figure 5 and Table 2, members who responded to the SNOT22 (with or without phone number) or expressed interest in Xhance had the highest utilization based on stays per 1,000 members and IP days per 1,000 members. However, looking at just the members who had inpatients stays, the Invited and Responded groups had the highest utilization (Table 3). </p>
+
+
+```{r, Inpatient Stays Comparison, echo = FALSE, fig.width = 8, fig.height = 3.5, fig.align = "center"}
+
+InpatientUtil <- combGrpUtil %>% 
+  group_by(Group, Generated_ID) %>% 
+  summarise(sum_ip_visit = sum(IP_Visits),
+            sum_ip_days = sum(IP_Days)) %>% 
+  mutate(AnyIP = ifelse(sum_ip_visit > 0, 1, 0)) %>% 
+  group_by(Group) %>% 
+  summarise(Members=n(),
+            `% with IP Stays` = round(100 * sum(AnyIP) / Members, 1),
+            `Stays per 1,000 Members` = round(1000 * mean(sum_ip_visit), 0),
+            `IP Days per 1,000 Members` = round(1000 * mean(sum_ip_days), 0)) 
+
+IPStayper1000plot <- InpatientUtil %>% 
+  ggplot(aes(x = Group, y = `Stays per 1,000 Members`, fill = Group)) + 
+  geom_bar(stat = "identity", width = 0.5) + ylim(0, 400) + 
+  guides(fill = FALSE) + 
+  theme(axis.text.x = element_text(size = 9.7, face = "bold", angle = 45, hjust = 1),
+          plot.title = element_text(hjust = 0.5, size = 15, face = "bold"),
+          panel.grid = element_blank(),
+          axis.ticks = element_blank(),
+          legend.position = "bottom") + xlab("")
+
+IPDayper1000plot <- InpatientUtil %>%
+  ggplot(aes(x = Group, y = `IP Days per 1,000 Members`, fill = Group)) + 
+  geom_bar(stat = "identity", width = 0.5) + ylim(0,800) + 
+  guides(fill=FALSE) + 
+  theme(axis.text.x = element_text(size = 9.7, face = "bold", angle = 45, hjust = 1),
+          plot.title = element_text(hjust = 0.5, size = 15, face = "bold"),
+          panel.grid = element_blank(),
+          axis.ticks = element_blank(),
+          legend.position = "bottom") + xlab("")
+
+grid.arrange(IPStayper1000plot, IPDayper1000plot, nrow = 1, 
+             bottom = textGrob(numfig("Inpatient stays in 2017"), gp = gpar(fontsize = 14,font = 2)))
+  
+```
+
+```{r, Inpatient Stays 2017, echo=FALSE}
+
+combGrpUtil %>% 
+  group_by(Group, Generated_ID) %>% 
+  summarise(sum_ip_visit = sum(IP_Visits),
+            sum_ip_days = sum(IP_Days)) %>% 
+  mutate(AnyIP = ifelse(sum_ip_visit > 0, 1, 0)) %>% 
+  group_by(Group) %>% 
+  summarise(Members = n(),
+            `% with IP Stays` = round(100*sum(AnyIP) / Members, 1),
+            `Stays per 1,000 Members` = round(1000 * mean(sum_ip_visit), 0),
+            `IP Days per 1,000 Members` = round(1000 * mean(sum_ip_days), 0)) %>% 
+  kable(format.args = list(big.mark = ","), caption = numtib("Inpatient stays in 2017")) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = F)
+```
+
+<P style="page-break-before: always">
+```{r, IP for who had IP, echo = FALSE}
+
+combGrpUtil %>% 
+  group_by(Group,Generated_ID) %>% 
+  summarise(sum_ip_visit = sum(IP_Visits),
+            sum_ip_days = sum(IP_Days)) %>% 
+  mutate(AnyIP = ifelse(sum_ip_visit > 0, 1, 0)) %>% 
+  filter(AnyIP == 1) %>% 
+  group_by(Group) %>% 
+  summarise(Members = n(),
+            `Average IP Stays` = round(mean(sum_ip_visit), 1),
+            `Average IP Days` = round(mean(sum_ip_days), 1)) %>% 
+  kable(format.args = list(big.mark = ","), 
+        caption = numtib("IP stays and days for members who had any IP stay")) %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = F)
+```
+<br>
+
+##### __Cost of Inpatients Stays__
+<p>On average, inpatient stays of members who received a prescription have the highest cost both per stay and per day (Table 4).</p>
+
+```{r, IP Cost, echo = FALSE}
+
+combGrpUtil %>% 
+  group_by(Group,Generated_ID) %>% 
+  summarise(sum_ip_visit = sum(IP_Visits),
+            sum_ip_days = sum(IP_Days), 
+            sum_ip_cost = sum(IP_Cost)) %>% 
+  mutate(AnyIP = ifelse(sum_ip_visit > 0, 1, 0)) %>% 
+  filter(AnyIP == 1) %>% 
+  group_by(Group) %>% 
+  summarise(mem = n(),
+            CostperStay = paste("$", format(round(sum(sum_ip_cost)/sum(sum_ip_visit), 0),  big.mark=",")),
+            CostperDay = paste("$", format(round(sum(sum_ip_cost)/sum(sum_ip_days), 0), big.mark=","))) %>% 
+  kable(format.args = list(big.mark = ","), 
+        caption = numtib("Inpatient stay cost for members who had any IP stay"), 
+        col.names = c("Group","Members","Cost per Stay", "Cost per Day")) %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = F)
+```
+
+<P style="page-break-before: always">
+##### __Other Utilization Measures__
+<p>Table 5 shows the other utilization rates (per 1,000 members) for chronic rhinosinusitis visits (CRS), outpatient visits (OP), outpatient visits - ambulatory surgical center (OP-ASC), outpatient visits - urgent care (OP-UC), outpatient visits - emergency room (OP-ERM), and doctor visits (DR). In general, the Expressed Interest and Received Prescription groups had the highest utilization rates, except for ER visits.</p>
+
+
+```{r, Other Utilization, echo = FALSE}
+
+combGrpUtil %>% 
+  group_by(Group) %>%
+  summarise(CRS_Visits_per_1000 = round(1000 * mean(CRS_Visits), 0),
+            OP_Visits_per_1000 = round(1000 * mean(OP_Visits), 0),
+            OP_Visits_ASC_per_1000 = round(1000 * mean(OP_Visits_ASC), 0),
+            OP_Visits_UC_per_1000 = round(1000 * mean(OP_Visits_UC), 0),
+            OP_Visits_ERM_per_1000 = round(1000 * mean(OP_Visits_ERM), 0),
+            Dr_Visits_per_1000 = round(1000 * mean(Dr_Visits), 0)) %>% 
+  kable(format.args = list(big.mark = ","),
+        col.names = c("Group", "CRS","OP", "OP-ASC", "OP-UC", "OP-ERM", "DR"),
+        caption = numtib("Visits per 1,000 members")) %>% 
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = F)
+```
+
+### __Discussion__
+
+<p>Results show that the members who responded to the SNOT22 (with or without phone number), expressed interest, and received prescription are older. This difference in age among those groups is reflected by the higher proportion of members enrolled in Medicare. Also, these groups tend to have higher proportions of sinus-related conditions, e.g., chronic rhinosinusitis, rhinitis, and sinus surgery.  </p>
+
+<p>With regards to healthcare utilization, members who responded to the SNOT22 (with or without phone number) or expressed interest in Xhance had the highest utilization based on stays per 1,000 members and IP days per 1,000 members. In terms of cost, members who received a prescription have the highest cost both per stay and per day. </p>
+
+<p>In general, the Optinose Xhance drug was more appealing to members who are older and enrolled in Medicare insurance, have more sinus-related conditions, and with higher healthcare utilization. </p>
